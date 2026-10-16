@@ -1,0 +1,2072 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>رويال ديزاين | تجربة التشطيب الذكي ثلاثي الأبعاد 3D</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Google Fonts: Cairo & Tajawal for Luxury Arabic Typography -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <!-- Three.js r128 -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+
+    <style>
+        :root {
+            --gold-primary: #d4af37;
+            --gold-light: #f3e5ab;
+            --gold-dark: #aa8010;
+            --dark-bg: rgba(12, 14, 18, 0.78);
+            --glass-border: rgba(212, 175, 55, 0.28);
+        }
+
+        * {
+            box-sizing: border-box;
+            user-select: none;
+            -webkit-user-select: none;
+        }
+
+        body, html {
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            font-family: 'Cairo', sans-serif;
+            background-color: #090a0f;
+            color: #f8fafc;
+        }
+
+        #canvas-container {
+            position: fixed;
+            inset: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 1;
+            cursor: grab;
+        }
+
+        #canvas-container:active {
+            cursor: grabbing;
+        }
+
+        /* Glassmorphism Panels */
+        .glass-panel {
+            background: linear-gradient(135deg, rgba(16, 18, 24, 0.85) 0%, rgba(10, 12, 16, 0.92) 100%);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border: 1px solid var(--glass-border);
+            box-shadow: 0 12px 40px rgba(0, 0, 0, 0.6), inset 0 1px 0 rgba(255, 255, 255, 0.08);
+        }
+
+        .gold-gradient-text {
+            background: linear-gradient(90deg, #fff3c4 0%, #d4af37 50%, #b38728 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .gold-btn {
+            background: linear-gradient(135deg, #d4af37 0%, #b38728 50%, #8a6415 100%);
+            color: #090a0f;
+            font-weight: 800;
+            box-shadow: 0 4px 20px rgba(212, 175, 55, 0.35);
+            transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .gold-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(212, 175, 55, 0.55);
+            filter: brightness(1.08);
+        }
+
+        .gold-btn:active {
+            transform: translateY(0);
+        }
+
+        /* Custom Range Slider */
+        input[type=range].timeline-slider {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 100%;
+            height: 8px;
+            background: rgba(255, 255, 255, 0.12);
+            border-radius: 999px;
+            outline: none;
+            cursor: pointer;
+        }
+
+        input[type=range].timeline-slider::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            background: radial-gradient(circle, #fff8dc 20%, #d4af37 70%, #8a6415 100%);
+            border: 2px solid #ffffff;
+            box-shadow: 0 0 15px rgba(212, 175, 55, 0.9);
+            cursor: pointer;
+            transition: transform 0.15s ease;
+        }
+
+        input[type=range].timeline-slider::-webkit-slider-thumb:hover {
+            transform: scale(1.2);
+        }
+
+        /* 3D Hotspot Markers */
+        .hotspot-marker {
+            position: absolute;
+            transform: translate(-50%, -50%);
+            z-index: 15;
+            pointer-events: auto;
+            transition: opacity 0.25s ease, transform 0.25s ease;
+        }
+
+        .hotspot-pulse {
+            position: relative;
+            width: 34px;
+            height: 34px;
+            border-radius: 9999px;
+            background: rgba(15, 17, 23, 0.9);
+            border: 2px solid #d4af37;
+            color: #f3e5ab;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 800;
+            font-size: 14px;
+            cursor: pointer;
+            box-shadow: 0 0 16px rgba(212, 175, 55, 0.6);
+            transition: all 0.2s ease;
+        }
+
+        .hotspot-pulse:hover {
+            transform: scale(1.18);
+            background: #d4af37;
+            color: #090a0f;
+        }
+
+        .hotspot-pulse::after {
+            content: '';
+            position: absolute;
+            inset: -6px;
+            border-radius: 9999px;
+            border: 1.5px solid #d4af37;
+            animation: pingHotspot 2s cubic-bezier(0, 0, 0.2, 1) infinite;
+            pointer-events: none;
+        }
+
+        @keyframes pingHotspot {
+            0% { transform: scale(0.95); opacity: 0.9; }
+            80%, 100% { transform: scale(1.65); opacity: 0; }
+        }
+
+        /* Stage Button Active State */
+        .stage-btn.active {
+            background: linear-gradient(135deg, rgba(212, 175, 55, 0.28) 0%, rgba(170, 128, 16, 0.42) 100%);
+            border-color: #d4af37;
+            color: #fff;
+            box-shadow: 0 0 20px rgba(212, 175, 55, 0.3);
+        }
+
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: rgba(15, 18, 24, 0.6);
+        }
+        ::-webkit-scrollbar-thumb {
+            background: rgba(212, 175, 55, 0.5);
+            border-radius: 9999px;
+        }
+
+        .ui-transition {
+            transition: opacity 0.4s ease, transform 0.4s ease;
+        }
+
+        .ui-hidden {
+            opacity: 0 !important;
+            pointer-events: none !important;
+            transform: translateY(12px);
+        }
+    </style>
+</head>
+<body class="relative select-none">
+
+    <!-- 3D WebGL Viewport -->
+    <div id="canvas-container" title="اسحب لتدوير الكاميرا • استخدم البكرة للتقريب"></div>
+
+    <!-- Dynamic 3D Hotspots Overlay Container -->
+    <div id="hotspots-container" class="fixed inset-0 pointer-events-none z-10 overflow-hidden"></div>
+
+    <!-- Floating Toggle UI Button (Always visible even when UI is hidden) -->
+    <div class="fixed top-4 left-4 z-50 flex items-center gap-2">
+        <button id="toggle-ui-btn" onclick="toggleFullUI()" class="glass-panel px-3.5 py-2 rounded-xl text-xs sm:text-sm font-bold text-amber-300 hover:bg-amber-500/20 transition flex items-center gap-2 border border-amber-400/40 shadow-lg" title="إخفاء أو إظهار القوائم لمشاهدة الشقة بملء الشاشة">
+            <svg id="eye-icon" class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
+            </svg>
+            <span id="toggle-ui-text">ملء الشاشة 3D</span>
+        </button>
+
+        <button id="toggle-hotspots-btn" onclick="toggleHotspots()" class="glass-panel px-3 py-2 rounded-xl text-xs sm:text-sm font-semibold text-slate-200 hover:text-amber-300 transition flex items-center gap-1.5" title="إظهار أو إخفاء نقاط المواصفات الهندسية">
+            <span class="w-2.5 h-2.5 rounded-full bg-amber-400 animate-pulse"></span>
+            <span class="hidden sm:inline">نقاط الفحص الهندسي</span>
+        </button>
+    </div>
+
+    <!-- TOP HEADER BAR -->
+    <header id="top-ui" class="ui-transition fixed top-3 right-3 left-44 sm:left-72 z-30 pointer-events-none flex flex-wrap items-center justify-between gap-2">
+        <!-- Brand Logo & Title -->
+        <div class="glass-panel px-4 py-2.5 rounded-2xl pointer-events-auto flex items-center gap-3">
+            <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-amber-300 via-yellow-500 to-amber-700 flex items-center justify-center shadow-md shadow-amber-500/20 shrink-0">
+                <svg class="w-6 h-6 text-slate-950" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"/>
+                </svg>
+            </div>
+            <div>
+                <div class="flex items-center gap-2">
+                    <h1 class="text-base sm:text-lg font-black tracking-wide gold-gradient-text">رويال ديزاين</h1>
+                    <span class="text-[10px] bg-amber-500/20 text-amber-300 border border-amber-400/30 px-2 py-0.5 rounded-full font-bold">تكنولوجيا 3D المباشرة</span>
+                </div>
+                <p class="text-[11px] sm:text-xs text-slate-300 hidden sm:block">شاهد شقتك تتحول من الطوب الأحمر والمحارة إلى الفرش الفاخر أمام عينيك</p>
+            </div>
+        </div>
+
+        <!-- Action Buttons: Cost Calculator & Customizer Toggle -->
+        <div class="flex items-center gap-2 pointer-events-auto">
+            <button onclick="toggleCustomizerPanel()" class="glass-panel px-3.5 py-2.5 rounded-xl text-xs sm:text-sm font-bold text-amber-200 hover:border-amber-400 transition flex items-center gap-2">
+                <svg class="w-4 h-4 text-amber-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 21a4 4 0 01-4-4V5a2 2 0 012-2h4a2 2 0 012 2v12a4 4 0 01-4 4zm0 0h12a2 2 0 002-2v-4a2 2 0 00-2-2h-2.343M11 7.343l1.657-1.657a2 2 0 012.828 0l2.829 2.829a2 2 0 010 2.828l-8.486 8.485M7 17h.01"/>
+                </svg>
+                <span>تخصيص الألوان والخامات</span>
+            </button>
+
+            <button onclick="openCalculatorModal()" class="gold-btn px-4 py-2.5 rounded-xl text-xs sm:text-sm flex items-center gap-2">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.2" d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z"/>
+                </svg>
+                <span>احسب تكلفة شقتك</span>
+            </button>
+        </div>
+    </header>
+
+    <!-- RIGHT SIDE: CURRENT STAGE INFO CARD & CAMERA ANGLES -->
+    <aside id="side-info-ui" class="ui-transition fixed top-20 right-3 z-20 w-72 sm:w-80 pointer-events-none flex flex-col gap-2.5">
+        <!-- Stage Live Status Card -->
+        <div class="glass-panel p-4 rounded-2xl pointer-events-auto border-r-4 border-r-amber-400">
+            <div class="flex items-center justify-between mb-1.5">
+                <span id="stage-badge" class="text-[11px] font-extrabold px-2.5 py-0.5 rounded-full bg-amber-500/20 text-amber-300 border border-amber-400/30">
+                    المرحلة 1 من 5
+                </span>
+                <span id="completion-percent" class="text-xs font-black text-amber-400">نسبة الإنجاز: 0%</span>
+            </div>
+            <h2 id="stage-title" class="text-base sm:text-lg font-extrabold text-white mb-1">المرحلة الأولى: على الطوب الأحمر</h2>
+            <p id="stage-desc" class="text-xs text-slate-300 leading-relaxed mb-3">
+                استلام الشقة على الطوب الأحمر والخرسانة، رفع المقاسات بالليزر، ومراجعة الأعمدة، وتوريد المؤن والأسمنت لبداية التأسيس الهندسي.
+            </p>
+            <!-- Engineering Specs List for Current Stage -->
+            <div id="stage-specs" class="space-y-1.5 border-t border-white/10 pt-2.5 text-[11px] text-slate-200">
+                <div class="flex items-center gap-2">
+                    <span class="w-2 h-2 rounded-full bg-amber-400"></span>
+                    <span>معاينة واستلام بميزان الليزر ثلاثي الأبعاد</span>
+                </div>
+                <div class="flex items-center gap-2">
+                    <span class="w-2 h-2 rounded-full bg-amber-400"></span>
+                    <span>تصميم معماري وتوزيع الفرش قبل التكسير</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Quick Camera Angles -->
+        <div class="glass-panel p-2.5 rounded-2xl pointer-events-auto">
+            <div class="text-[11px] font-bold text-slate-400 mb-2 px-1 flex items-center justify-between">
+                <span>زوايا الكاميرا السينمائية:</span>
+                <span class="text-[10px] text-amber-300">اسحب الشاشة للدوران 360°</span>
+            </div>
+            <div class="grid grid-cols-2 gap-1.5 text-xs">
+                <button onclick="setCameraView('overview')" class="px-2.5 py-1.5 rounded-lg bg-white/5 hover:bg-amber-500/20 hover:text-amber-300 border border-white/10 transition font-semibold text-right flex items-center gap-1.5">
+                    <span>🏠</span> <span>منظور شامل</span>
+                </button>
+                <button onclick="setCameraView('tvwall')" class="px-2.5 py-1.5 rounded-lg bg-white/5 hover:bg-amber-500/20 hover:text-amber-300 border border-white/10 transition font-semibold text-right flex items-center gap-1.5">
+                    <span>📺</span> <span>جدار التلفزيون</span>
+                </button>
+                <button onclick="setCameraView('sofa')" class="px-2.5 py-1.5 rounded-lg bg-white/5 hover:bg-amber-500/20 hover:text-amber-300 border border-white/10 transition font-semibold text-right flex items-center gap-1.5">
+                    <span>🛋️</span> <span>منطقة الاستقبال</span>
+                </button>
+                <button onclick="setCameraView('ceiling')" class="px-2.5 py-1.5 rounded-lg bg-white/5 hover:bg-amber-500/20 hover:text-amber-300 border border-white/10 transition font-semibold text-right flex items-center gap-1.5">
+                    <span>💡</span> <span>الجبس والإضاءة</span>
+                </button>
+            </div>
+        </div>
+    </aside>
+
+    <!-- LEFT SIDE: INTERACTIVE CUSTOMIZER PANEL -->
+    <aside id="customizer-panel" class="ui-transition fixed top-16 left-3 z-30 w-72 sm:w-80 glass-panel p-4 rounded-2xl hidden flex-col gap-4 max-h-[72vh] overflow-y-auto">
+        <div class="flex items-center justify-between border-b border-white/10 pb-2.5">
+            <div class="flex items-center gap-2">
+                <span class="text-lg">🎨</span>
+                <h3 class="font-extrabold text-sm sm:text-base text-amber-300">تخصيص التشطيب الفوري</h3>
+            </div>
+            <button onclick="toggleCustomizerPanel()" class="text-slate-400 hover:text-white p-1 rounded-lg bg-white/5">✕</button>
+        </div>
+
+        <!-- Lighting Mode -->
+        <div>
+            <label class="block text-xs font-bold text-slate-300 mb-2">نظام الإضاءة والأجواء:</label>
+            <div class="grid grid-cols-3 gap-1.5 text-xs">
+                <button onclick="setLightingMode('day')" id="light-day" class="p-2 rounded-xl border border-amber-400 bg-amber-500/20 text-white font-bold flex flex-col items-center gap-1 transition">
+                    <span>☀️</span>
+                    <span>نهاري ساطع</span>
+                </button>
+                <button onclick="setLightingMode('cozy')" id="light-cozy" class="p-2 rounded-xl border border-white/10 bg-white/5 text-slate-300 hover:border-amber-400/50 font-bold flex flex-col items-center gap-1 transition">
+                    <span>🌙</span>
+                    <span>ليلي سينمائي</span>
+                </button>
+                <button onclick="setLightingMode('sunset')" id="light-sunset" class="p-2 rounded-xl border border-white/10 bg-white/5 text-slate-300 hover:border-amber-400/50 font-bold flex flex-col items-center gap-1 transition">
+                    <span>🌅</span>
+                    <span>غروب ذهبي</span>
+                </button>
+            </div>
+        </div>
+
+        <!-- Wall Paint Color (Jotun Palette) -->
+        <div>
+            <div class="flex items-center justify-between mb-2">
+                <label class="text-xs font-bold text-slate-300">لون دهانات الحوائط (جوتن):</label>
+                <span id="paint-name-label" class="text-[11px] text-amber-300 font-semibold">بيج ملكي دافئ</span>
+            </div>
+            <div class="flex items-center gap-2.5">
+                <button onclick="setWallPaint('#e8dfd1', 'بيج ملكي دافئ')" class="w-9 h-9 rounded-full border-2 border-white shadow-md transition transform hover:scale-110" style="background-color: #e8dfd1;" title="بيج ملكي دافئ"></button>
+                <button onclick="setWallPaint('#c9c5bc', 'رمادي جريج مودرن')" class="w-9 h-9 rounded-full border-2 border-white/40 shadow-md transition transform hover:scale-110" style="background-color: #c9c5bc;" title="رمادي جريج مودرن"></button>
+                <button onclick="setWallPaint('#b9c6ba', 'أخضر مريمي هادئ')" class="w-9 h-9 rounded-full border-2 border-white/40 shadow-md transition transform hover:scale-110" style="background-color: #b9c6ba;" title="أخضر مريمي هادئ"></button>
+                <button onclick="setWallPaint('#243447', 'كحلي ملكي فاخر')" class="w-9 h-9 rounded-full border-2 border-white/40 shadow-md transition transform hover:scale-110" style="background-color: #243447;" title="كحلي ملكي فاخر"></button>
+                <button onclick="setWallPaint('#f5f5f3', 'أبيض لؤلؤي نقي')" class="w-9 h-9 rounded-full border-2 border-white/40 shadow-md transition transform hover:scale-110" style="background-color: #f5f5f3;" title="أبيض لؤلؤي نقي"></button>
+            </div>
+        </div>
+
+        <!-- Flooring Material -->
+        <div>
+            <label class="block text-xs font-bold text-slate-300 mb-2">خامة الأرضيات (بورسلين / باركيه):</label>
+            <div class="grid grid-cols-3 gap-2 text-xs">
+                <button onclick="setFloorMaterial('marble_white')" id="floor-marble_white" class="p-2 rounded-xl border border-amber-400 bg-amber-500/20 text-white font-bold text-center transition">
+                    رخام كرارا أبيض
+                </button>
+                <button onclick="setFloorMaterial('parquet')" id="floor-parquet" class="p-2 rounded-xl border border-white/10 bg-white/5 text-slate-300 hover:border-amber-400/50 font-bold text-center transition">
+                    باركيه خشب جوزي
+                </button>
+                <button onclick="setFloorMaterial('marble_dark')" id="floor-marble_dark" class="p-2 rounded-xl border border-white/10 bg-white/5 text-slate-300 hover:border-amber-400/50 font-bold text-center transition">
+                    بورسلين نيرو أسود
+                </button>
+            </div>
+        </div>
+
+        <!-- Sofa Upholstery Color -->
+        <div>
+            <label class="block text-xs font-bold text-slate-300 mb-2">لون قماش الركنة (الفرش):</label>
+            <div class="flex items-center gap-2.5">
+                <button onclick="setSofaColor('#d8cfc2')" class="w-8 h-8 rounded-full border-2 border-white" style="background-color: #d8cfc2;" title="كتان بيج فاتح"></button>
+                <button onclick="setSofaColor('#334155')" class="w-8 h-8 rounded-full border-2 border-white/40" style="background-color: #334155;" title="رمادي أنثراسيت"></button>
+                <button onclick="setSofaColor('#1e3a2f')" class="w-8 h-8 rounded-full border-2 border-white/40" style="background-color: #1e3a2f;" title="أخضر زمردي"></button>
+                <button onclick="setSofaColor('#7c4a32')" class="w-8 h-8 rounded-full border-2 border-white/40" style="background-color: #7c4a32;" title="جملي هافان"></button>
+            </div>
+        </div>
+
+        <div class="text-[11px] text-amber-200/80 bg-amber-500/10 border border-amber-400/20 rounded-xl p-2.5 leading-relaxed">
+            💡 <strong>ملاحظة:</strong> لمشاهدة تغييرات الدهانات والفرش بوضوح، انتقل إلى المرحلة الرابعة أو الخامسة من شريط المراحل بالأسفل.
+        </div>
+    </aside>
+
+    <!-- HOTSPOT DETAIL POPUP CARD -->
+    <div id="hotspot-popup" class="fixed bottom-36 left-1/2 -translate-x-1/2 z-40 w-[90vw] max-w-md glass-panel p-4 rounded-2xl hidden border border-amber-400/60 shadow-2xl">
+        <div class="flex items-start justify-between gap-3">
+            <div class="flex items-center gap-2.5">
+                <div class="w-9 h-9 rounded-xl bg-amber-500/20 border border-amber-400 flex items-center justify-center text-amber-300 font-black" id="popup-icon">✓</div>
+                <div>
+                    <span id="popup-stage-tag" class="text-[10px] text-amber-300 font-bold uppercase">مواصفات التنفيذ القياسية</span>
+                    <h4 id="popup-title" class="text-sm sm:text-base font-extrabold text-white">تأسيس الكهرباء والسباكة</h4>
+                </div>
+            </div>
+            <button onclick="closeHotspotPopup()" class="text-slate-400 hover:text-white bg-white/10 rounded-lg px-2 py-0.5 text-sm">✕</button>
+        </div>
+        <p id="popup-body" class="text-xs text-slate-200 mt-2.5 leading-relaxed"></p>
+        <div class="mt-3 pt-2 border-t border-white/10 flex items-center justify-between text-[11px] text-amber-300 font-bold">
+            <span>🛡️ ضمان هندسي 10 سنوات</span>
+            <button onclick="openCalculatorModal()" class="underline hover:text-white">اطلب عرض سعر لهذه الباقة ←</button>
+        </div>
+    </div>
+
+    <!-- BOTTOM TIMELINE & STAGES CONTROLLER -->
+    <footer id="bottom-ui" class="ui-transition fixed bottom-3 inset-x-3 z-30 pointer-events-none flex flex-col items-center">
+        <div class="glass-panel w-full max-w-5xl p-3 sm:p-4 rounded-2xl pointer-events-auto">
+            <!-- Top Row: Continuous Scrubber + Auto-Play Button -->
+            <div class="flex flex-col sm:flex-row items-center gap-3 mb-3">
+                <button id="autoplay-btn" onclick="toggleAutoPlayTour()" class="gold-btn w-full sm:w-auto px-4 py-2 rounded-xl text-xs sm:text-sm flex items-center justify-center gap-2 shrink-0">
+                    <span id="autoplay-icon">▶</span>
+                    <span id="autoplay-text">جولة سينمائية تلقائية</span>
+                </button>
+
+                <div class="flex-1 w-full flex items-center gap-3 px-2">
+                    <span class="text-[11px] font-bold text-amber-300 whitespace-nowrap">الطوب الأحمر</span>
+                    <input id="master-timeline" type="range" min="0" max="4" step="0.01" value="0" class="timeline-slider" oninput="onTimelineScrub(this.value)">
+                    <span class="text-[11px] font-bold text-emerald-300 whitespace-nowrap">التشطيب والفرش</span>
+                </div>
+            </div>
+
+            <!-- Bottom Row: 5 Interactive Stage Buttons -->
+            <div class="grid grid-cols-5 gap-1.5 sm:gap-2.5">
+                <button onclick="goToStage(0)" id="stage-btn-0" class="stage-btn active p-2 sm:p-2.5 rounded-xl border border-white/10 bg-white/5 hover:bg-white/10 transition flex flex-col items-center text-center">
+                    <span class="text-sm sm:text-base mb-0.5">🧱</span>
+                    <span class="text-[10px] sm:text-xs font-extrabold leading-tight">1. الطوب الأحمر</span>
+                    <span class="text-[9px] text-slate-400 hidden md:inline mt-0.5">الخرسانة والميزان</span>
+                </button>
+
+                <button onclick="goToStage(1)" id="stage-btn-1" class="stage-btn p-2 sm:p-2.5 rounded-xl border border-white/10 bg-white/5 hover:bg-white/10 transition flex flex-col items-center text-center">
+                    <span class="text-sm sm:text-base mb-0.5">🔌</span>
+                    <span class="text-[10px] sm:text-xs font-extrabold leading-tight">2. التأسيس والمحارة</span>
+                    <span class="text-[9px] text-slate-400 hidden md:inline mt-0.5">كهرباء وبؤج وأوتار</span>
+                </button>
+
+                <button onclick="goToStage(2)" id="stage-btn-2" class="stage-btn p-2 sm:p-2.5 rounded-xl border border-white/10 bg-white/5 hover:bg-white/10 transition flex flex-col items-center text-center">
+                    <span class="text-sm sm:text-base mb-0.5">✨</span>
+                    <span class="text-[10px] sm:text-xs font-extrabold leading-tight">3. الجبس والأرضيات</span>
+                    <span class="text-[9px] text-slate-400 hidden md:inline mt-0.5">بيت نور وبورسلين</span>
+                </button>
+
+                <button onclick="goToStage(3)" id="stage-btn-3" class="stage-btn p-2 sm:p-2.5 rounded-xl border border-white/10 bg-white/5 hover:bg-white/10 transition flex flex-col items-center text-center">
+                    <span class="text-sm sm:text-base mb-0.5">🎨</span>
+                    <span class="text-[10px] sm:text-xs font-extrabold leading-tight">4. الدهانات والتجاليد</span>
+                    <span class="text-[9px] text-slate-400 hidden md:inline mt-0.5">بديل الرخام والخشب</span>
+                </button>
+
+                <button onclick="goToStage(4)" id="stage-btn-4" class="stage-btn p-2 sm:p-2.5 rounded-xl border border-white/10 bg-white/5 hover:bg-white/10 transition flex flex-col items-center text-center">
+                    <span class="text-sm sm:text-base mb-0.5">🛋️</span>
+                    <span class="text-[10px] sm:text-xs font-extrabold leading-tight">5. التشطيب والفرش</span>
+                    <span class="text-[9px] text-slate-400 hidden md:inline mt-0.5">ألترا سوبر لوكس</span>
+                </button>
+            </div>
+        </div>
+    </footer>
+
+    <!-- INSTANT COST CALCULATOR & BOOKING MODAL -->
+    <div id="calculator-modal" class="fixed inset-0 z-50 bg-black/75 backdrop-blur-md hidden items-center justify-center p-4 overflow-y-auto">
+        <div class="glass-panel w-full max-w-2xl rounded-3xl p-5 sm:p-7 border border-amber-400/40 relative my-auto">
+            <button onclick="closeCalculatorModal()" class="absolute top-4 left-4 w-9 h-9 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center text-slate-300 hover:text-white font-bold">✕</button>
+
+            <div class="flex items-center gap-3 mb-4">
+                <div class="w-11 h-11 rounded-2xl gold-btn flex items-center justify-center text-xl">📐</div>
+                <div>
+                    <h3 class="text-lg sm:text-xl font-black gold-gradient-text">حاسبة تكلفة التشطيب الفورية</h3>
+                    <p class="text-xs text-slate-300">احسب مقايسة شقتك التقديرية واحجز معاينة مجانية بالليزر مع مهندسينا</p>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
+                <!-- Right Column: Inputs -->
+                <div class="space-y-4">
+                    <div>
+                        <div class="flex justify-between text-xs font-bold mb-1.5">
+                            <label class="text-slate-200">مساحة الشقة بالمتر المربع:</label>
+                            <span id="area-display" class="text-amber-400 font-black text-sm">160 م²</span>
+                        </div>
+                        <input id="calc-area" type="range" min="70" max="450" step="5" value="160" class="timeline-slider" oninput="updateCostCalculation()">
+                        <div class="flex justify-between text-[10px] text-slate-400 mt-1">
+                            <span>70 م²</span>
+                            <span>200 م²</span>
+                            <span>450 م²</span>
+                        </div>
+                    </div>
+
+                    <div>
+                        <label class="block text-xs font-bold text-slate-200 mb-2">اختر باقة التشطيب المناسبة:</label>
+                        <div class="space-y-2">
+                            <label class="flex items-center justify-between p-2.5 rounded-xl border border-white/15 bg-white/5 cursor-pointer hover:border-amber-400/50 transition">
+                                <div class="flex items-center gap-2.5">
+                                    <input type="radio" name="pkg" value="super" onchange="updateCostCalculation()" class="accent-amber-400">
+                                    <div>
+                                        <div class="text-xs font-extrabold text-white">باقة سوبر لوكس (Super Lux)</div>
+                                        <div class="text-[10px] text-slate-400">تأسيس السويدي • محارة ليزر • سيراميك فرز أول • جوتن</div>
+                                    </div>
+                                </div>
+                                <span class="text-xs font-bold text-amber-300">4,500 ج/م²</span>
+                            </label>
+
+                            <label class="flex items-center justify-between p-2.5 rounded-xl border border-amber-400 bg-amber-500/15 cursor-pointer transition">
+                                <div class="flex items-center gap-2.5">
+                                    <input type="radio" name="pkg" value="ultra" checked onchange="updateCostCalculation()" class="accent-amber-400">
+                                    <div>
+                                        <div class="text-xs font-extrabold text-white">باقة الترا سوبر لوكس (Ultra Lux)</div>
+                                        <div class="text-[10px] text-amber-200/80">بورسلين مستورد • جبس بورد وبيت نور • بديل رخام وخشب</div>
+                                    </div>
+                                </div>
+                                <span class="text-xs font-bold text-amber-300">6,800 ج/م²</span>
+                            </label>
+
+                            <label class="flex items-center justify-between p-2.5 rounded-xl border border-white/15 bg-white/5 cursor-pointer hover:border-amber-400/50 transition">
+                                <div class="flex items-center gap-2.5">
+                                    <input type="radio" name="pkg" value="vip" onchange="updateCostCalculation()" class="accent-amber-400">
+                                    <div>
+                                        <div class="text-xs font-extrabold text-white">باقة VIP الملكية شاملة الفرش</div>
+                                        <div class="text-[10px] text-slate-400">تشطيب فندقي متكامل + الأثاث المودرن والستائر والإضاءة</div>
+                                    </div>
+                                </div>
+                                <span class="text-xs font-bold text-amber-300">11,500 ج/م²</span>
+                            </label>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Left Column: Estimate Output & Booking Form -->
+                <div class="flex flex-col justify-between bg-white/5 border border-white/10 rounded-2xl p-4">
+                    <div>
+                        <div class="text-xs text-slate-400 font-semibold">التكلفة الإجمالية التقديرية:</div>
+                        <div id="total-cost-output" class="text-2xl sm:text-3xl font-black gold-gradient-text my-1">1,088,000 ج.م</div>
+                        <div class="flex items-center gap-3 text-[11px] text-emerald-300 font-bold mb-3">
+                            <span id="duration-output">⏱️ مدة التنفيذ: 90 يوم</span>
+                            <span>•</span>
+                            <span>📐 شاملة التصميم 3D مجاناً</span>
+                        </div>
+
+                        <hr class="border-white/10 my-3">
+
+                        <!-- Booking Form -->
+                        <form id="booking-form" onsubmit="submitInspectionForm(event)" class="space-y-2.5">
+                            <div class="text-xs font-bold text-amber-300 mb-1">احجز معاينة مجانية ورفع مقاسات بالليزر:</div>
+                            <input type="text" required placeholder="الاسم بالكامل" class="w-full px-3 py-2 rounded-xl bg-black/40 border border-white/15 text-xs text-white focus:border-amber-400 outline-none">
+                            <input type="tel" required placeholder="رقم الهاتف / واتساب" class="w-full px-3 py-2 rounded-xl bg-black/40 border border-white/15 text-xs text-white focus:border-amber-400 outline-none">
+                            <input type="text" required placeholder="منطقة الشقة (مثال: التجمع الخامس، الشيخ زايد...)" class="w-full px-3 py-2 rounded-xl bg-black/40 border border-white/15 text-xs text-white focus:border-amber-400 outline-none">
+                            <button type="submit" class="gold-btn w-full py-2.5 rounded-xl text-xs sm:text-sm mt-1">
+                                تأكيد حجز المعاينة المجانية
+                            </button>
+                        </form>
+
+                        <div id="booking-success" class="hidden p-3 rounded-xl bg-emerald-500/20 border border-emerald-400 text-emerald-200 text-xs font-bold text-center mt-2">
+                            🎉 تم تسجيل طلبك بنجاح! سيتواصل معك كبير مهندسي المكتب الفني خلال ساعة لتحديد موعد المعاينة المجانية.
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        /********************************************************************
+         * 1. STAGE DATA & HOTSPOTS CONFIGURATION (ARABIC)
+         ********************************************************************/
+        const STAGES_INFO = [
+            {
+                badge: "المرحلة 1 من 5",
+                title: "المرحلة الأولى: على الطوب الأحمر",
+                desc: "استلام الشقة على الطوب الأحمر والخرسانة، رفع المقاسات بميزان الليزر الأخضر 3D، ومراجعة الأعمدة، وتوريد المؤن والأسمنت لبداية التأسيس الهندسي.",
+                specs: [
+                    "رفع مساحي دقيق بميزان الليزر ومطابقة الرسومات",
+                    "توريد أسمنت ورمل نظيف للتأسيس والطرطشة",
+                    "تحديد أماكن التعديلات المعمارية وتوزيع الفرش"
+                ]
+            },
+            {
+                badge: "المرحلة 2 من 5",
+                title: "المرحلة الثانية: التأسيس والمحارة",
+                desc: "تمديد خراطيم الكهرباء والعلب الماجيك بأسلاك السويدي المعتمدة، يليها عمل الطرطشة المسمارية والبؤج والأوتار والمحارة الأسمنتية الموزونة بالليزر.",
+                specs: [
+                    "تأسيس كهرباء: سلك السويدي الأصلي وخراطيم معتمدة",
+                    "محارة بميزان الليزر: استرباع وتربيع الغرف بالبؤج والأوتار",
+                    "شبك فايبر ممدد عند الفواصل بين الطوب والخرسانة لمنع التنميل"
+                ]
+            },
+            {
+                badge: "المرحلة 3 من 5",
+                title: "المرحلة الثالثة: الجبس بورد والأرضيات",
+                desc: "تركيب الأسقف المعلقة من الجبس بورد الألماني مع بيوت النور المخفية والاسبوتات، وسحب سكاكين المعجون، وتركيب البورسلين المستورد بقطع الليزر.",
+                specs: [
+                    "جبس بورد كناوف ألماني بصاج محمل 0.5 مم",
+                    "سحب 3 سكاكين معجون سافيتو وسيلر مائي عالي المقاومة",
+                    "بورسلين مستورد فرز أول بصلصة لاصقة وفواصل ليزر دقيقة"
+                ]
+            },
+            {
+                badge: "المرحلة 4 من 5",
+                title: "المرحلة الرابعة: الدهانات والتجاليد",
+                desc: "تطبيق دهانات جوتن فينوماستيك الفاخرة القابلة للغسيل، وتنفيذ تجاليد حائط التلفزيون من بديل الرخام وبديل الخشب مع البانوهات وبروفايل الليد.",
+                specs: [
+                    "دهانات جوتن فينوماستيك صحية وبدون رائحة",
+                    "تجاليد بديل الخشب المضلع وبديل الرخام بأوردة طبيعية",
+                    "تركيب بروفايل ليد دافئ وإضاءات معمارية موجهة"
+                ]
+            },
+            {
+                badge: "المرحلة 5 من 5",
+                title: "المرحلة الخامسة: التشطيب النهائي والفرش",
+                desc: "تسليم الشقة على المفتاح بمستوى ألترا سوبر لوكس شاملة الفرش الفاخر: ركنة مودرن، طاولة قهوة رخام، وحدة تلفزيون ذكية، ستائر مضيئة، ونجفة كريستال.",
+                specs: [
+                    "فرش مودرن تفصيل بخشب زان أحمر وأقمشة معالجة ضد البقع",
+                    "وحدة تلفزيون معلقة مع شاشة ذكية 75 بوصة وإضاءة محيطية",
+                    "ضمان شامل 10 سنوات على كافة أعمال التأسيس والتشطيب"
+                ]
+            }
+        ];
+
+        const HOTSPOTS_DATA = [
+            {
+                id: 'hs-laser',
+                minProgress: 0,
+                maxProgress: 1.2,
+                pos: new THREE.Vector3(-1.2, 1.1, 0.5),
+                label: '1',
+                tag: 'تكنولوجيا الاستلام الهندسي',
+                title: 'ميزان ليزر أخضر 360° لاسترباع الغرف',
+                body: 'نستخدم أحدث أجهزة الليزر الرقمية لضمان استواء الحوائط، تربيع الزوايا القائمة 90 درجة، وضبط منسوب الشيرب الموحد للشقة بالكامل قبل وضع نقطة أسمنت واحدة.',
+                camTarget: 'overview'
+            },
+            {
+                id: 'hs-elec',
+                minProgress: 0.5,
+                maxProgress: 2.3,
+                pos: new THREE.Vector3(0.5, 1.8, -4.3),
+                label: '⚡',
+                tag: 'التأسيس الكهروميكانيكي والمحارة',
+                title: 'أسلاك السويدي ومحارة بؤج وأوتار',
+                body: 'خراطيم وخلايا كهربائية موزعة هندسياً حسب مخطط الفرش، مع محارة أسمنتية موزونة بالبؤج والأوتار تمنع أي تموجات في الجدران وتضمن دهانات مثالية.',
+                camTarget: 'tvwall'
+            },
+            {
+                id: 'hs-ceiling',
+                minProgress: 1.5,
+                maxProgress: 4.0,
+                pos: new THREE.Vector3(0, 3.85, -1.0),
+                label: '💡',
+                tag: 'الأسقف المعلقة والإضاءة',
+                title: 'جبس بورد كناوف وبيت نور مخفي دافئ',
+                body: 'سقف جبس بورد مضاد للرطوبة والتشققات مع مسارات إضاءة LED مخفية (3000K Warm White) واسبوتات غاطسة مانعة للتوهج تمنح الريسبشن فخامة الفنادق.',
+                camTarget: 'ceiling'
+            },
+            {
+                id: 'hs-tvwall',
+                minProgress: 2.3,
+                maxProgress: 4.0,
+                pos: new THREE.Vector3(1.5, 2.2, -4.25),
+                label: '✨',
+                tag: 'التجاليد الديكورية والدهانات',
+                title: 'بديل الرخام وبديل الخشب مع دهانات جوتن',
+                body: 'تصميم عصري لجدار التلفزيون يجمع بين شرائح بديل الخشب المعالج وألواح بديل الرخام الإيطالي المزودة بشرائط ليد طولية، مع دهانات جوتن فينوماستيك للحوائط.',
+                camTarget: 'tvwall'
+            },
+            {
+                id: 'hs-floor',
+                minProgress: 1.5,
+                maxProgress: 4.0,
+                pos: new THREE.Vector3(2.0, 0.15, 1.2),
+                label: '💎',
+                tag: 'الأرضيات الفاخرة',
+                title: 'بورسلين مستورد قطع ليزر / باركيه ألماني',
+                body: 'تركيب ألواح بورسلين كبيرة الحجم بقطع ليزر وفواصل شبه منعدمة باستخدام مادة لاصقة مرنة وصلصة إيبوكسي، مع إمكانية التبديل للباركيه من لوحة التخصيص.',
+                camTarget: 'overview'
+            },
+            {
+                id: 'hs-sofa',
+                minProgress: 3.3,
+                maxProgress: 4.0,
+                pos: new THREE.Vector3(-1.8, 0.95, 1.2),
+                label: '🛋️',
+                tag: 'الفرش والديكور النهائي',
+                title: 'أثاث مودرن تفصيل عالي الجودة',
+                body: 'ركنة حرف L مريحة جداً بهيكل خشب زان أحمر طبيعي وإسفنج عالي الكثافة، مع طاولة قهوة رخام طبيعي، سجاد تركي ناعم، وستائر فندقية ببيت ستارة مضيء.',
+                camTarget: 'sofa'
+            }
+        ];
+
+        /********************************************************************
+         * 2. PROCEDURAL TEXTURES GENERATOR (100% SELF-CONTAINED & FAST)
+         ********************************************************************/
+        function createBrickTexture() {
+            const canvas = document.createElement('canvas');
+            canvas.width = 512;
+            canvas.height = 512;
+            const ctx = canvas.getContext('2d');
+
+            // Mortar background
+            ctx.fillStyle = '#8b8680';
+            ctx.fillRect(0, 0, 512, 512);
+
+            const rows = 16;
+            const cols = 8;
+            const brickH = 512 / rows;
+            const brickW = 512 / cols;
+            const mortar = 4;
+
+            for (let r = 0; r < rows; r++) {
+                const offset = (r % 2) * (brickW / 2);
+                for (let c = -1; c <= cols; c++) {
+                    const x = c * brickW + offset;
+                    const y = r * brickH;
+                    // Subtle brick color variation
+                    const shade = Math.floor(Math.random() * 28) - 14;
+                    const red = Math.min(255, Math.max(110, 168 + shade));
+                    const green = Math.min(255, Math.max(45, 72 + Math.floor(shade * 0.5)));
+                    const blue = Math.min(255, Math.max(35, 52 + Math.floor(shade * 0.4)));
+                    ctx.fillStyle = `rgb(${red}, ${green}, ${blue})`;
+                    ctx.fillRect(x + mortar / 2, y + mortar / 2, brickW - mortar, brickH - mortar);
+
+                    // Add clay pores/texture
+                    ctx.fillStyle = 'rgba(40,15,10,0.18)';
+                    ctx.fillRect(x + 8, y + 6, brickW - 20, 3);
+                }
+            }
+
+            const tex = new THREE.CanvasTexture(canvas);
+            tex.wrapS = THREE.RepeatWrapping;
+            tex.wrapT = THREE.RepeatWrapping;
+            tex.repeat.set(3.5, 2.2);
+            return tex;
+        }
+
+        function createPlasterTexture(baseColor = '#7d8082', noiseStrength = 18) {
+            const canvas = document.createElement('canvas');
+            canvas.width = 512;
+            canvas.height = 512;
+            const ctx = canvas.getContext('2d');
+
+            ctx.fillStyle = baseColor;
+            ctx.fillRect(0, 0, 512, 512);
+
+            for (let i = 0; i < 6000; i++) {
+                const x = Math.random() * 512;
+                const y = Math.random() * 512;
+                const v = (Math.random() - 0.5) * noiseStrength;
+                ctx.fillStyle = v > 0 ? `rgba(255,255,255,0.06)` : `rgba(0,0,0,0.07)`;
+                ctx.fillRect(x, y, 3, 3);
+            }
+
+            const tex = new THREE.CanvasTexture(canvas);
+            tex.wrapS = THREE.RepeatWrapping;
+            tex.wrapT = THREE.RepeatWrapping;
+            tex.repeat.set(3, 2);
+            return tex;
+        }
+
+        function createMarbleTexture(bgHex = '#f3f1ed', veinHex = '#c5b8a5', goldVein = '#d4af37', gridLines = true) {
+            const canvas = document.createElement('canvas');
+            canvas.width = 1024;
+            canvas.height = 1024;
+            const ctx = canvas.getContext('2d');
+
+            ctx.fillStyle = bgHex;
+            ctx.fillRect(0, 0, 1024, 1024);
+
+            // Organic marble veins
+            for (let v = 0; v < 18; v++) {
+                ctx.beginPath();
+                let x = Math.random() * 1024;
+                let y = Math.random() * 1024;
+                ctx.moveTo(x, y);
+                for (let step = 0; step < 12; step++) {
+                    x += (Math.random() - 0.35) * 140;
+                    y += (Math.random() - 0.35) * 140;
+                    ctx.quadraticCurveTo(x + (Math.random() - 0.5) * 60, y + (Math.random() - 0.5) * 60, x, y);
+                }
+                ctx.strokeStyle = v % 4 === 0 ? goldVein : veinHex;
+                ctx.globalAlpha = v % 4 === 0 ? 0.25 : 0.32;
+                ctx.lineWidth = (Math.random() * 4) + 1;
+                ctx.stroke();
+            }
+            ctx.globalAlpha = 1.0;
+
+            if (gridLines) {
+                ctx.strokeStyle = 'rgba(120, 120, 120, 0.22)';
+                ctx.lineWidth = 3;
+                const step = 256;
+                for (let i = 0; i <= 1024; i += step) {
+                    ctx.beginPath(); ctx.moveTo(i, 0); ctx.lineTo(i, 1024); ctx.stroke();
+                    ctx.beginPath(); ctx.moveTo(0, i); ctx.lineTo(1024, i); ctx.stroke();
+                }
+            }
+
+            const tex = new THREE.CanvasTexture(canvas);
+            tex.wrapS = THREE.RepeatWrapping;
+            tex.wrapT = THREE.RepeatWrapping;
+            tex.repeat.set(2.5, 2.5);
+            return tex;
+        }
+
+        function createParquetTexture() {
+            const canvas = document.createElement('canvas');
+            canvas.width = 512;
+            canvas.height = 512;
+            const ctx = canvas.getContext('2d');
+
+            ctx.fillStyle = '#8b5a2b';
+            ctx.fillRect(0, 0, 512, 512);
+
+            const planksY = 8;
+            const planksX = 4;
+            const pH = 512 / planksY;
+            const pW = 512 / planksX;
+
+            for (let r = 0; r < planksY; r++) {
+                const offset = (r % 2) * (pW / 2);
+                for (let c = -1; c <= planksX; c++) {
+                    const x = c * pW + offset;
+                    const y = r * pH;
+                    const delta = Math.floor(Math.random() * 24) - 12;
+                    ctx.fillStyle = `rgb(${138 + delta}, ${92 + Math.floor(delta * 0.7)}, ${52 + Math.floor(delta * 0.4)})`;
+                    ctx.fillRect(x + 1, y + 1, pW - 2, pH - 2);
+
+                    // Wood grain lines
+                    ctx.fillStyle = 'rgba(50, 25, 8, 0.14)';
+                    for (let g = 0; g < 4; g++) {
+                        ctx.fillRect(x + 4, y + 8 + g * 12, pW - 8, 2);
+                    }
+                }
+            }
+
+            const tex = new THREE.CanvasTexture(canvas);
+            tex.wrapS = THREE.RepeatWrapping;
+            tex.wrapT = THREE.RepeatWrapping;
+            tex.repeat.set(3, 3);
+            return tex;
+        }
+
+        function createCarpetTexture() {
+            const canvas = document.createElement('canvas');
+            canvas.width = 512;
+            canvas.height = 512;
+            const ctx = canvas.getContext('2d');
+
+            ctx.fillStyle = '#ded6c8';
+            ctx.fillRect(0, 0, 512, 512);
+
+            // Luxury geometric border & motifs
+            ctx.strokeStyle = '#b69b6d';
+            ctx.lineWidth = 10;
+            ctx.strokeRect(24, 24, 464, 464);
+
+            ctx.strokeStyle = '#475569';
+            ctx.lineWidth = 4;
+            ctx.strokeRect(44, 44, 424, 424);
+
+            // Diamond center
+            ctx.beginPath();
+            ctx.moveTo(256, 90);
+            ctx.lineTo(422, 256);
+            ctx.lineTo(256, 422);
+            ctx.lineTo(90, 256);
+            ctx.closePath();
+            ctx.strokeStyle = '#b69b6d';
+            ctx.lineWidth = 6;
+            ctx.stroke();
+
+            return new THREE.CanvasTexture(canvas);
+        }
+
+        function createTVScreenTexture() {
+            const canvas = document.createElement('canvas');
+            canvas.width = 512;
+            canvas.height = 256;
+            const ctx = canvas.getContext('2d');
+
+            const grad = ctx.createLinearGradient(0, 0, 512, 256);
+            grad.addColorStop(0, '#0f172a');
+            grad.addColorStop(0.5, '#1e293b');
+            grad.addColorStop(1, '#332712');
+            ctx.fillStyle = grad;
+            ctx.fillRect(0, 0, 512, 256);
+
+            // Golden architectural rings
+            ctx.strokeStyle = '#d4af37';
+            ctx.lineWidth = 3;
+            ctx.beginPath();
+            ctx.arc(256, 128, 70, 0, Math.PI * 2);
+            ctx.stroke();
+
+            ctx.fillStyle = '#f3e5ab';
+            ctx.font = 'bold 26px Cairo, sans-serif';
+            ctx.textAlign = 'center';
+            ctx.fillText('ROYAL DESIGN 3D', 256, 125);
+            ctx.font = '16px Cairo, sans-serif';
+            ctx.fillStyle = '#cbd5e1';
+            ctx.fillText('تشطيبات وديكورات فندقية متكاملة', 256, 155);
+
+            return new THREE.CanvasTexture(canvas);
+        }
+
+        /********************************************************************
+         * 3. THREE.JS SCENE, CAMERA & ARCHITECTURE INITIALIZATION
+         ********************************************************************/
+        let scene, camera, renderer;
+        let currentProgress = 0.0;
+        let targetProgress = 0.0;
+        let isAutoPlaying = false;
+        let showHotspots = true;
+        let fullUIHidden = false;
+
+        // Camera spherical orbit state
+        let camSpherical = {
+            radius: 7.8,
+            theta: 0.35,   // Horizontal angle
+            phi: 1.38      // Vertical angle
+        };
+        let targetSpherical = { ...camSpherical };
+        let camLookAt = new THREE.Vector3(0, 1.65, -0.8);
+        let targetLookAt = new THREE.Vector3(0, 1.65, -0.8);
+
+        // Groups and dynamic materials for stages
+        const stageGroups = {
+            propsBrick: new THREE.Group(),      // Stage 1 construction props
+            plasterAndElec: new THREE.Group(),  // Stage 2 plaster & electrical
+            gypsumAndFloor: new THREE.Group(),  // Stage 3 ceiling & floor
+            claddingAndPaint: new THREE.Group(),// Stage 4 cladding & paint
+            furniture: new THREE.Group()        // Stage 5 full luxury furnishing
+        };
+
+        let customizableMaterials = {
+            wallPaint: null,
+            floorTile: null,
+            sofaFabric: null,
+            marbleTextures: {}
+        };
+
+        let sceneLights = {
+            ambient: null,
+            sunLight: null,
+            coveLight1: null,
+            coveLight2: null,
+            chandelierLight: null,
+            tvBacklight: null
+        };
+
+        let animatedFurnitureItems = [];
+        let laserLinesMesh = null;
+
+        function init3DScene() {
+            const container = document.getElementById('canvas-container');
+            scene = new THREE.Scene();
+            scene.background = new THREE.Color(0x0b0e14);
+            scene.fog = new THREE.FogExp2(0x0b0e14, 0.025);
+
+            camera = new THREE.PerspectiveCamera(50, window.innerWidth / window.innerHeight, 0.1, 100);
+
+            renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: "high-performance" });
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+            renderer.shadowMap.enabled = true;
+            renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+            renderer.toneMapping = THREE.ACESFilmicToneMapping;
+            renderer.toneMappingExposure = 1.1;
+            container.appendChild(renderer.domElement);
+
+            setupLights();
+            buildRoomBase();
+            buildStage1ConstructionProps();
+            buildStage2PlasterAndElectrical();
+            buildStage3GypsumAndFloor();
+            buildStage4CladdingAndPaint();
+            buildStage5LuxuryFurniture();
+
+            scene.add(stageGroups.propsBrick);
+            scene.add(stageGroups.plasterAndElec);
+            scene.add(stageGroups.gypsumAndFloor);
+            scene.add(stageGroups.claddingAndPaint);
+            scene.add(stageGroups.furniture);
+
+            createHotspotDOMElements();
+            setupInteractionListeners(renderer.domElement);
+            updateCostCalculation();
+
+            // Start at Stage 1 with a smooth welcome reveal
+            updateSceneByProgress(0);
+        }
+
+        function setupLights() {
+            sceneLights.ambient = new THREE.AmbientLight(0xfff6e5, 0.55);
+            scene.add(sceneLights.ambient);
+
+            // Main Daylight/Sun Light coming through the left balcony window
+            sceneLights.sunLight = new THREE.DirectionalLight(0xfffbeb, 1.15);
+            sceneLights.sunLight.position.set(-8, 7, 5);
+            sceneLights.sunLight.castShadow = true;
+            sceneLights.sunLight.shadow.mapSize.width = 1024;
+            sceneLights.sunLight.shadow.mapSize.height = 1024;
+            sceneLights.sunLight.shadow.bias = -0.001;
+            scene.add(sceneLights.sunLight);
+
+            // Warm Ceiling Cove Lights (Activated in Stage 3-5)
+            sceneLights.coveLight1 = new THREE.PointLight(0xffb74d, 0, 12);
+            sceneLights.coveLight1.position.set(-2.2, 3.65, -1.2);
+            scene.add(sceneLights.coveLight1);
+
+            sceneLights.coveLight2 = new THREE.PointLight(0xffb74d, 0, 12);
+            sceneLights.coveLight2.position.set(2.2, 3.65, -1.2);
+            scene.add(sceneLights.coveLight2);
+
+            // TV Cladding Warm Backlight (Stage 4-5)
+            sceneLights.tvBacklight = new THREE.PointLight(0xffa726, 0, 8);
+            sceneLights.tvBacklight.position.set(0.5, 2.1, -3.8);
+            scene.add(sceneLights.tvBacklight);
+
+            // Chandelier Warm Glow (Stage 5)
+            sceneLights.chandelierLight = new THREE.PointLight(0xffe082, 0, 14);
+            sceneLights.chandelierLight.position.set(0, 3.1, -0.5);
+            sceneLights.chandelierLight.castShadow = true;
+            scene.add(sceneLights.chandelierLight);
+        }
+
+        /********************************************************************
+         * 4. BUILDING THE 5 ARCHITECTURAL STAGES IN 3D
+         ********************************************************************/
+        // Room Dimensions: Width = 9m (-4.5 to +4.5), Height = 4.2m (0 to 4.2), Depth = 9m (-4.5 to +4.5)
+        function buildRoomBase() {
+            const brickTex = createBrickTexture();
+            const concreteTex = createPlasterTexture('#595d62', 24);
+
+            const brickMat = new THREE.MeshStandardMaterial({
+                map: brickTex,
+                bumpMap: brickTex,
+                bumpScale: 0.04,
+                roughness: 0.9
+            });
+
+            const concreteMat = new THREE.MeshStandardMaterial({
+                map: concreteTex,
+                roughness: 0.92
+            });
+
+            // Raw Concrete Floor & Ceiling
+            const floorGeo = new THREE.PlaneGeometry(9.2, 9.2);
+            const rawFloor = new THREE.Mesh(floorGeo, concreteMat);
+            rawFloor.rotation.x = -Math.PI / 2;
+            rawFloor.receiveShadow = true;
+            scene.add(rawFloor);
+
+            const rawCeiling = new THREE.Mesh(floorGeo, concreteMat);
+            rawCeiling.rotation.x = Math.PI / 2;
+            rawCeiling.position.y = 4.2;
+            scene.add(rawCeiling);
+
+            // Back Wall (Red Brick)
+            const backWall = new THREE.Mesh(new THREE.BoxGeometry(9.2, 4.2, 0.25), brickMat);
+            backWall.position.set(0, 2.1, -4.5);
+            backWall.receiveShadow = true;
+            scene.add(backWall);
+
+            // Right Wall (Red Brick)
+            const rightWall = new THREE.Mesh(new THREE.BoxGeometry(0.25, 4.2, 9.2), brickMat);
+            rightWall.position.set(4.5, 2.1, 0);
+            rightWall.receiveShadow = true;
+            scene.add(rightWall);
+
+            // Left Wall with Balcony Window Opening (3 segments around window)
+            const leftBottom = new THREE.Mesh(new THREE.BoxGeometry(0.25, 0.7, 9.2), brickMat);
+            leftBottom.position.set(-4.5, 0.35, 0);
+            scene.add(leftBottom);
+
+            const leftTop = new THREE.Mesh(new THREE.BoxGeometry(0.25, 0.8, 9.2), brickMat);
+            leftTop.position.set(-4.5, 3.8, 0);
+            scene.add(leftTop);
+
+            const leftPillarBack = new THREE.Mesh(new THREE.BoxGeometry(0.25, 2.7, 2.6), brickMat);
+            leftPillarBack.position.set(-4.5, 2.05, -3.2);
+            scene.add(leftPillarBack);
+
+            const leftPillarFront = new THREE.Mesh(new THREE.BoxGeometry(0.25, 2.7, 2.6), brickMat);
+            leftPillarFront.position.set(-4.5, 2.05, 3.2);
+            scene.add(leftPillarFront);
+
+            // Exposed Concrete Structural Columns (عمدان خرسانية)
+            const colGeo = new THREE.BoxGeometry(0.45, 4.2, 0.45);
+            const col1 = new THREE.Mesh(colGeo, concreteMat);
+            col1.position.set(-4.35, 2.1, -4.35);
+            scene.add(col1);
+
+            const col2 = new THREE.Mesh(colGeo, concreteMat);
+            col2.position.set(4.35, 2.1, -4.35);
+            scene.add(col2);
+
+            const col3 = new THREE.Mesh(colGeo, concreteMat);
+            col3.position.set(4.35, 2.1, 4.35);
+            scene.add(col3);
+
+            // Concrete Lintel (عتب خرساني فوق الشباك)
+            const lintel = new THREE.Mesh(new THREE.BoxGeometry(0.32, 0.25, 4.6), concreteMat);
+            lintel.position.set(-4.48, 3.45, 0);
+            scene.add(lintel);
+        }
+
+        // STAGE 1: Construction Props (Laser Level, Cement Bags, Wheelbarrow, Wooden Ladder)
+        function buildStage1ConstructionProps() {
+            const group = stageGroups.propsBrick;
+
+            // 1. Green 3D Laser Level on Tripod (ميزان ليزر أخضر)
+            const tripodGroup = new THREE.Group();
+            tripodGroup.position.set(-1.2, 0, 0.5);
+
+            const metalMat = new THREE.MeshStandardMaterial({ color: 0x222629, metalness: 0.7, roughness: 0.3 });
+            for (let i = 0; i < 3; i++) {
+                const leg = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.015, 1.15), metalMat);
+                const angle = (i * Math.PI * 2) / 3;
+                leg.position.set(Math.cos(angle) * 0.22, 0.52, Math.sin(angle) * 0.22);
+                leg.rotation.z = Math.cos(angle) * 0.28;
+                leg.rotation.x = -Math.sin(angle) * 0.28;
+                tripodGroup.add(leg);
+            }
+            const laserHead = new THREE.Mesh(
+                new THREE.BoxGeometry(0.22, 0.24, 0.22),
+                new THREE.MeshStandardMaterial({ color: 0x10b981, roughness: 0.3 })
+            );
+            laserHead.position.y = 1.12;
+            tripodGroup.add(laserHead);
+            group.add(tripodGroup);
+
+            // Glowing Green Laser Level Lines projected on walls
+            const laserMat = new THREE.MeshBasicMaterial({ color: 0x00ff66, transparent: true, opacity: 0.85 });
+            laserLinesMesh = new THREE.Group();
+            const hLineBack = new THREE.Mesh(new THREE.BoxGeometry(8.8, 0.025, 0.025), laserMat);
+            hLineBack.position.set(0, 1.15, -4.34);
+            const hLineRight = new THREE.Mesh(new THREE.BoxGeometry(0.025, 0.025, 8.8), laserMat);
+            hLineRight.position.set(4.34, 1.15, 0);
+            const vLineBack = new THREE.Mesh(new THREE.BoxGeometry(0.025, 4.1, 0.025), laserMat);
+            vLineBack.position.set(-1.2, 2.05, -4.34);
+            laserLinesMesh.add(hLineBack, hLineRight, vLineBack);
+            group.add(laserLinesMesh);
+
+            // 2. Stack of Cement Bags on Wooden Pallet (شكاير أسمنت على طبلية خشب)
+            const woodMat = new THREE.MeshStandardMaterial({ color: 0x9c6f44, roughness: 0.85 });
+            const pallet = new THREE.Mesh(new THREE.BoxGeometry(1.3, 0.12, 1.0), woodMat);
+            pallet.position.set(2.7, 0.06, -2.9);
+            group.add(pallet);
+
+            const bagMat = new THREE.MeshStandardMaterial({ color: 0xb0a695, roughness: 0.9 });
+            for (let row = 0; row < 3; row++) {
+                for (let b = 0; b < 2; b++) {
+                    const bag = new THREE.Mesh(new THREE.BoxGeometry(0.55, 0.18, 0.82), bagMat);
+                    bag.position.set(2.4 + b * 0.58, 0.21 + row * 0.18, -2.9);
+                    bag.rotation.y = (Math.random() - 0.5) * 0.08;
+                    bag.castShadow = true;
+                    group.add(bag);
+                }
+            }
+
+            // 3. Wooden A-Frame Ladder (سلم خشبي للمحارة)
+            const ladderGroup = new THREE.Group();
+            ladderGroup.position.set(-2.9, 0, -3.2);
+            ladderGroup.rotation.y = 0.4;
+            const rail1 = new THREE.Mesh(new THREE.BoxGeometry(0.06, 2.3, 0.06), woodMat);
+            rail1.position.set(-0.28, 1.1, 0);
+            const rail2 = new THREE.Mesh(new THREE.BoxGeometry(0.06, 2.3, 0.06), woodMat);
+            rail2.position.set(0.28, 1.1, 0);
+            ladderGroup.add(rail1, rail2);
+            for (let s = 0; s < 6; s++) {
+                const step = new THREE.Mesh(new THREE.BoxGeometry(0.6, 0.04, 0.05), woodMat);
+                step.position.set(0, 0.35 + s * 0.34, 0);
+                ladderGroup.add(step);
+            }
+            group.add(ladderGroup);
+        }
+
+        // STAGE 2: Electrical Conduits, Boxes & Gray Cement Plaster (المحارة والتأسيس)
+        function buildStage2PlasterAndElectrical() {
+            const group = stageGroups.plasterAndElec;
+            const plasterTex = createPlasterTexture('#787b7f', 15);
+            const plasterMat = new THREE.MeshStandardMaterial({
+                map: plasterTex,
+                roughness: 0.86
+            });
+
+            // Cement Plaster Layer covering Back, Right, and Left Walls
+            const backPlaster = new THREE.Mesh(new THREE.BoxGeometry(9.0, 4.18, 0.06), plasterMat);
+            backPlaster.position.set(0, 2.1, -4.34);
+            backPlaster.receiveShadow = true;
+            group.add(backPlaster);
+
+            const rightPlaster = new THREE.Mesh(new THREE.BoxGeometry(0.06, 4.18, 9.0), plasterMat);
+            rightPlaster.position.set(4.34, 2.1, 0);
+            rightPlaster.receiveShadow = true;
+            group.add(rightPlaster);
+
+            const leftBottomPlaster = new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.72, 9.0), plasterMat);
+            leftBottomPlaster.position.set(-4.34, 0.36, 0);
+            group.add(leftBottomPlaster);
+
+            const leftTopPlaster = new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.82, 9.0), plasterMat);
+            leftTopPlaster.position.set(-4.34, 3.79, 0);
+            group.add(leftTopPlaster);
+
+            // Orange Electrical Conduits & Junction Boxes (خراطيم السويدي والعلب)
+            const conduitGroup = new THREE.Group();
+            conduitGroup.name = "electricalConduits";
+            const orangeMat = new THREE.MeshStandardMaterial({ color: 0xff6d00, roughness: 0.4 });
+            const boxMat = new THREE.MeshStandardMaterial({ color: 0xfacc15, roughness: 0.5 });
+
+            // Conduits on Back Wall (TV area)
+            const pipePositions = [-2.2, -0.5, 0.5, 1.2, 2.8];
+            pipePositions.forEach((xPos) => {
+                const pipe = new THREE.Mesh(new THREE.CylinderGeometry(0.018, 0.018, 2.9), orangeMat);
+                pipe.position.set(xPos, 2.35, -4.30);
+                conduitGroup.add(pipe);
+
+                const magicBox = new THREE.Mesh(new THREE.BoxGeometry(0.14, 0.09, 0.05), boxMat);
+                magicBox.position.set(xPos, 0.9, -4.29);
+                conduitGroup.add(magicBox);
+            });
+
+            // Horizontal Bridge Pipe
+            const hPipe = new THREE.Mesh(new THREE.CylinderGeometry(0.018, 0.018, 4.0), orangeMat);
+            hPipe.rotation.z = Math.PI / 2;
+            hPipe.position.set(0.3, 1.65, -4.30);
+            conduitGroup.add(hPipe);
+
+            // Conduits on Right Wall
+            [-2.0, 1.5].forEach((zPos) => {
+                const rPipe = new THREE.Mesh(new THREE.CylinderGeometry(0.018, 0.018, 3.1), orangeMat);
+                rPipe.position.set(4.30, 2.35, zPos);
+                conduitGroup.add(rPipe);
+
+                const rBox = new THREE.Mesh(new THREE.BoxGeometry(0.05, 0.09, 0.14), boxMat);
+                rBox.position.set(4.29, 0.85, zPos);
+                conduitGroup.add(rBox);
+            });
+
+            group.add(conduitGroup);
+        }
+
+        // STAGE 3: Suspended Gypsum Board Ceiling, Spotlights & Porcelain/Marble Flooring
+        function buildStage3GypsumAndFloor() {
+            const group = stageGroups.gypsumAndFloor;
+
+            // Pre-generate floor textures for Customizer
+            customizableMaterials.marbleTextures.marble_white = createMarbleTexture('#f4f1ea', '#c7baa7', '#d4af37', true);
+            customizableMaterials.marbleTextures.parquet = createParquetTexture();
+            customizableMaterials.marbleTextures.marble_dark = createMarbleTexture('#1b1e23', '#475569', '#d4af37', true);
+
+            customizableMaterials.floorTile = new THREE.MeshStandardMaterial({
+                map: customizableMaterials.marbleTextures.marble_white,
+                roughness: 0.15,
+                metalness: 0.08
+            });
+
+            // Polished Floor Mesh
+            const finishedFloor = new THREE.Mesh(new THREE.BoxGeometry(8.8, 0.05, 8.8), customizableMaterials.floorTile);
+            finishedFloor.position.set(0, 0.025, 0);
+            finishedFloor.receiveShadow = true;
+            group.add(finishedFloor);
+
+            // Skirting Boards (وزرة الأرضيات)
+            const skirtMat = new THREE.MeshStandardMaterial({ color: 0xdfd8cc, roughness: 0.3 });
+            const backSkirt = new THREE.Mesh(new THREE.BoxGeometry(8.8, 0.14, 0.04), skirtMat);
+            backSkirt.position.set(0, 0.09, -4.29);
+            const rightSkirt = new THREE.Mesh(new THREE.BoxGeometry(0.04, 0.14, 8.8), skirtMat);
+            rightSkirt.position.set(4.29, 0.09, 0);
+            group.add(backSkirt, rightSkirt);
+
+            // Modern Suspended Gypsum Board Ceiling with Hidden LED Cove (بيت نور)
+            const gypsumMat = new THREE.MeshStandardMaterial({ color: 0xf8fafc, roughness: 0.6 });
+            const ledGlowMat = new THREE.MeshBasicMaterial({ color: 0xffd584 });
+
+            const ceilingGroup = new THREE.Group();
+            ceilingGroup.name = "gypsumCeiling";
+
+            // Outer Tray Drops (4 sides)
+            const trayNorth = new THREE.Mesh(new THREE.BoxGeometry(8.8, 0.24, 1.15), gypsumMat);
+            trayNorth.position.set(0, 4.02, -3.8);
+            const traySouth = new THREE.Mesh(new THREE.BoxGeometry(8.8, 0.24, 1.15), gypsumMat);
+            traySouth.position.set(0, 4.02, 3.8);
+            const trayEast = new THREE.Mesh(new THREE.BoxGeometry(1.15, 0.24, 6.5), gypsumMat);
+            trayEast.position.set(3.8, 4.02, 0);
+            const trayWest = new THREE.Mesh(new THREE.BoxGeometry(1.15, 0.24, 6.5), gypsumMat);
+            trayWest.position.set(-3.8, 4.02, 0);
+            ceilingGroup.add(trayNorth, traySouth, trayEast, trayWest);
+
+            // Glowing Hidden LED Cove Strips (بيت النور المخفي)
+            const ledNorth = new THREE.Mesh(new THREE.BoxGeometry(6.5, 0.04, 0.06), ledGlowMat);
+            ledNorth.position.set(0, 3.94, -3.22);
+            const ledEast = new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.04, 6.5), ledGlowMat);
+            ledEast.position.set(3.22, 3.94, 0);
+            const ledWest = new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.04, 6.5), ledGlowMat);
+            ledWest.position.set(-3.22, 3.94, 0);
+            ceilingGroup.add(ledNorth, ledEast, ledWest);
+
+            // Recessed Spotlights (اسبوتات غاطسة)
+            const spotPositions = [
+                [-2.6, -3.7], [0, -3.7], [2.6, -3.7],
+                [3.7, -2.2], [3.7, 0], [3.7, 2.2],
+                [-3.7, -2.2], [-3.7, 2.2]
+            ];
+            spotPositions.forEach(([sx, sz]) => {
+                const ring = new THREE.Mesh(
+                    new THREE.CylinderGeometry(0.09, 0.09, 0.02, 16),
+                    new THREE.MeshStandardMaterial({ color: 0x1e293b, metalness: 0.8 })
+                );
+                ring.position.set(sx, 3.89, sz);
+                const bulb = new THREE.Mesh(
+                    new THREE.CylinderGeometry(0.06, 0.06, 0.025, 16),
+                    ledGlowMat
+                );
+                bulb.position.set(sx, 3.885, sz);
+                ceilingGroup.add(ring, bulb);
+            });
+
+            group.add(ceilingGroup);
+        }
+
+        // STAGE 4: Luxury Jotun Wall Paint, Wood Slats (بديل الخشب), Marble Cladding (بديل الرخام) & Wall Moldings
+        function buildStage4CladdingAndPaint() {
+            const group = stageGroups.claddingAndPaint;
+
+            customizableMaterials.wallPaint = new THREE.MeshStandardMaterial({
+                color: 0xe8dfd1,
+                roughness: 0.55
+            });
+
+            // Painted Walls
+            const backPaint = new THREE.Mesh(new THREE.BoxGeometry(8.8, 4.1, 0.04), customizableMaterials.wallPaint);
+            backPaint.position.set(0, 2.05, -4.29);
+            backPaint.receiveShadow = true;
+            group.add(backPaint);
+
+            const rightPaint = new THREE.Mesh(new THREE.BoxGeometry(0.04, 4.1, 8.8), customizableMaterials.wallPaint);
+            rightPaint.position.set(4.29, 2.05, 0);
+            rightPaint.receiveShadow = true;
+            group.add(rightPaint);
+
+            const leftBottomPaint = new THREE.Mesh(new THREE.BoxGeometry(0.04, 0.72, 8.8), customizableMaterials.wallPaint);
+            leftBottomPaint.position.set(-4.29, 0.36, 0);
+            group.add(leftBottomPaint);
+
+            // Luxury TV Wall Cladding (بديل الرخام وبديل الخشب على الحائط الخلفي)
+            const claddingGroup = new THREE.Group();
+            claddingGroup.name = "tvCladding";
+
+            // Center Marble Cladding Slab
+            const tvMarbleTex = createMarbleTexture('#1e2229', '#64748b', '#d4af37', false);
+            const tvMarbleMat = new THREE.MeshStandardMaterial({
+                map: tvMarbleTex,
+                roughness: 0.18,
+                metalness: 0.15
+            });
+            const marbleSlab = new THREE.Mesh(new THREE.BoxGeometry(3.4, 3.5, 0.08), tvMarbleMat);
+            marbleSlab.position.set(0.3, 1.95, -4.22);
+            marbleSlab.castShadow = true;
+            claddingGroup.add(marbleSlab);
+
+            // Glowing LED Strip Behind Marble Slab
+            const slabLed = new THREE.Mesh(
+                new THREE.BoxGeometry(3.48, 3.56, 0.03),
+                new THREE.MeshBasicMaterial({ color: 0xffc864 })
+            );
+            slabLed.position.set(0.3, 1.95, -4.255);
+            claddingGroup.add(slabLed);
+
+            // Fluted Wood Slats (بديل الخشب المضلع على يمين ويسار الرخام)
+            const woodSlatMat = new THREE.MeshStandardMaterial({ color: 0x6e4726, roughness: 0.45 });
+            for (let i = 0; i < 14; i++) {
+                const slatLeft = new THREE.Mesh(new THREE.BoxGeometry(0.06, 3.65, 0.07), woodSlatMat);
+                slatLeft.position.set(-2.75 + i * 0.095, 1.95, -4.23);
+                claddingGroup.add(slatLeft);
+            }
+            for (let i = 0; i < 10; i++) {
+                const slatRight = new THREE.Mesh(new THREE.BoxGeometry(0.06, 3.65, 0.07), woodSlatMat);
+                slatRight.position.set(2.15 + i * 0.095, 1.95, -4.23);
+                claddingGroup.add(slatRight);
+            }
+
+            // Classic/Modern Wall Molding Frames (بانوهات فاخرة على الحائط الأيمن)
+            const moldingMat = new THREE.MeshStandardMaterial({ color: 0xd4af37, metalness: 0.65, roughness: 0.25 });
+            [-2.2, 0.2, 2.5].forEach((zCenter) => {
+                const frameW = 1.6;
+                const frameH = 2.4;
+                const topBar = new THREE.Mesh(new THREE.BoxGeometry(0.03, 0.03, frameW), moldingMat);
+                topBar.position.set(4.26, 3.1, zCenter);
+                const botBar = new THREE.Mesh(new THREE.BoxGeometry(0.03, 0.03, frameW), moldingMat);
+                botBar.position.set(4.26, 0.7, zCenter);
+                const leftBar = new THREE.Mesh(new THREE.BoxGeometry(0.03, frameH, 0.03), moldingMat);
+                leftBar.position.set(4.26, 1.9, zCenter - frameW / 2);
+                const rightBar = new THREE.Mesh(new THREE.BoxGeometry(0.03, frameH, 0.03), moldingMat);
+                rightBar.position.set(4.26, 1.9, zCenter + frameW / 2);
+                claddingGroup.add(topBar, botBar, leftBar, rightBar);
+            });
+
+            group.add(claddingGroup);
+        }
+
+        // STAGE 5: Complete Ultra Super Lux Furnishing (الأثاث والفرش المتكامل)
+        function buildStage5LuxuryFurniture() {
+            const group = stageGroups.furniture;
+            animatedFurnitureItems = [];
+
+            const goldMat = new THREE.MeshStandardMaterial({ color: 0xd4af37, metalness: 0.85, roughness: 0.2 });
+            const darkWoodMat = new THREE.MeshStandardMaterial({ color: 0x3b2614, roughness: 0.4 });
+            customizableMaterials.sofaFabric = new THREE.MeshStandardMaterial({ color: 0xd8cfc2, roughness: 0.85 });
+
+            // Helper to register furniture item for staggered smooth entry animation
+            function registerFurniture(meshOrGroup, startP, endP, baseY = 0) {
+                meshOrGroup.userData = { startP, endP, baseY };
+                group.add(meshOrGroup);
+                animatedFurnitureItems.push(meshOrGroup);
+            }
+
+            // 1. Luxury Geometric Carpet (سجادة تركي فاخرة)
+            const carpetMesh = new THREE.Mesh(
+                new THREE.BoxGeometry(4.8, 0.02, 3.6),
+                new THREE.MeshStandardMaterial({ map: createCarpetTexture(), roughness: 0.9 })
+            );
+            carpetMesh.position.set(-0.2, 0.06, 0.6);
+            carpetMesh.receiveShadow = true;
+            registerFurniture(carpetMesh, 3.0, 3.35, 0.06);
+
+            // 2. Modern L-Shaped Sectional Sofa + Throw Pillows (ركنة مودرن حرف L)
+            const sofaGroup = new THREE.Group();
+            sofaGroup.position.set(-0.2, 0, 1.4);
+
+            // Main horizontal sofa base & cushions
+            const baseMain = new THREE.Mesh(new THREE.BoxGeometry(3.6, 0.38, 1.05), customizableMaterials.sofaFabric);
+            baseMain.position.set(0.2, 0.24, 0.7);
+            baseMain.castShadow = true;
+            sofaGroup.add(baseMain);
+
+            const backMain = new THREE.Mesh(new THREE.BoxGeometry(3.6, 0.55, 0.24), customizableMaterials.sofaFabric);
+            backMain.position.set(0.2, 0.68, 1.12);
+            backMain.castShadow = true;
+            sofaGroup.add(backMain);
+
+            // Chaise lounge (الجزء الممتد من الركنة)
+            const chaiseBase = new THREE.Mesh(new THREE.BoxGeometry(1.15, 0.38, 2.3), customizableMaterials.sofaFabric);
+            chaiseBase.position.set(-1.15, 0.24, 0.08);
+            chaiseBase.castShadow = true;
+            sofaGroup.add(chaiseBase);
+
+            // Armrests
+            const armRight = new THREE.Mesh(new THREE.BoxGeometry(0.24, 0.58, 1.08), customizableMaterials.sofaFabric);
+            armRight.position.set(2.05, 0.34, 0.7);
+            const armLeft = new THREE.Mesh(new THREE.BoxGeometry(0.24, 0.58, 2.3), customizableMaterials.sofaFabric);
+            armLeft.position.set(-1.78, 0.34, 0.08);
+            sofaGroup.add(armRight, armLeft);
+
+            // Decorative Accent Pillows (وسائد ديكورية ذهبية وكحلي)
+            const pillowGoldMat = new THREE.MeshStandardMaterial({ color: 0xc59b27, roughness: 0.6 });
+            const pillowNavyMat = new THREE.MeshStandardMaterial({ color: 0x1e293b, roughness: 0.7 });
+            [-1.1, -0.2, 0.8, 1.6].forEach((px, idx) => {
+                const pillow = new THREE.Mesh(
+                    new THREE.BoxGeometry(0.42, 0.38, 0.14),
+                    idx % 2 === 0 ? pillowGoldMat : pillowNavyMat
+                );
+                pillow.position.set(px, 0.62, 0.88);
+                pillow.rotation.z = (idx % 2 === 0 ? 0.12 : -0.1);
+                pillow.castShadow = true;
+                sofaGroup.add(pillow);
+            });
+
+            registerFurniture(sofaGroup, 3.15, 3.6, 0);
+
+            // 3. Luxury Marble & Gold Coffee Table (طاولة قهوة رخام وإطار ذهبي)
+            const tableGroup = new THREE.Group();
+            tableGroup.position.set(0.2, 0, -0.25);
+
+            const tableTop = new THREE.Mesh(
+                new THREE.CylinderGeometry(0.85, 0.85, 0.05, 32),
+                new THREE.MeshStandardMaterial({ map: customizableMaterials.marbleTextures.marble_white, roughness: 0.15 })
+            );
+            tableTop.position.y = 0.44;
+            tableTop.castShadow = true;
+            tableGroup.add(tableTop);
+
+            const tableRing = new THREE.Mesh(new THREE.TorusGeometry(0.82, 0.02, 16, 48), goldMat);
+            tableRing.rotation.x = Math.PI / 2;
+            tableRing.position.y = 0.42;
+            tableGroup.add(tableRing);
+
+            for (let l = 0; l < 4; l++) {
+                const leg = new THREE.Mesh(new THREE.CylinderGeometry(0.02, 0.02, 0.42), goldMat);
+                const ang = (l * Math.PI) / 2;
+                leg.position.set(Math.cos(ang) * 0.65, 0.21, Math.sin(ang) * 0.65);
+                tableGroup.add(leg);
+            }
+
+            // Golden Vase on Coffee Table
+            const vase = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.12, 0.26, 20), goldMat);
+            vase.position.set(0.1, 0.58, 0);
+            tableGroup.add(vase);
+
+            registerFurniture(tableGroup, 3.3, 3.75, 0);
+
+            // 4. Floating TV Console & 75" Smart OLED TV (وحدة التلفزيون والشاشة)
+            const tvUnitGroup = new THREE.Group();
+            const consoleBox = new THREE.Mesh(new THREE.BoxGeometry(3.2, 0.42, 0.48), darkWoodMat);
+            consoleBox.position.set(0.3, 0.55, -3.95);
+            consoleBox.castShadow = true;
+            tvUnitGroup.add(consoleBox);
+
+            const tvFrame = new THREE.Mesh(
+                new THREE.BoxGeometry(2.35, 1.32, 0.05),
+                new THREE.MeshStandardMaterial({ color: 0x090a0f, roughness: 0.2, metalness: 0.8 })
+            );
+            tvFrame.position.set(0.3, 1.95, -4.14);
+            tvUnitGroup.add(tvFrame);
+
+            const tvScreen = new THREE.Mesh(
+                new THREE.PlaneGeometry(2.26, 1.24),
+                new THREE.MeshBasicMaterial({ map: createTVScreenTexture() })
+            );
+            tvScreen.position.set(0.3, 1.95, -4.11);
+            tvUnitGroup.add(tvScreen);
+
+            registerFurniture(tvUnitGroup, 3.25, 3.7, 0);
+
+            // 5. Floor-to-Ceiling Velvet & Sheer Curtains on Left Window (ستائر فندقية)
+            const curtainGroup = new THREE.Group();
+            const velvetMat = new THREE.MeshStandardMaterial({ color: 0x8c785c, roughness: 0.75 });
+            const sheerMat = new THREE.MeshStandardMaterial({ color: 0xffffff, transparent: true, opacity: 0.45 });
+
+            // Sheer center glass + curtain
+            const sheerPanel = new THREE.Mesh(new THREE.BoxGeometry(0.05, 3.85, 3.9), sheerMat);
+            sheerPanel.position.set(-4.18, 1.98, 0);
+            curtainGroup.add(sheerPanel);
+
+            // Velvet pleated side drapes
+            for (let p = 0; p < 5; p++) {
+                const drapeL = new THREE.Mesh(new THREE.CylinderGeometry(0.11, 0.13, 3.9, 16), velvetMat);
+                drapeL.position.set(-4.1, 1.98, -2.0 + p * 0.18);
+                const drapeR = new THREE.Mesh(new THREE.CylinderGeometry(0.11, 0.13, 3.9, 16), velvetMat);
+                drapeR.position.set(-4.1, 1.98, 1.3 + p * 0.18);
+                curtainGroup.add(drapeL, drapeR);
+            }
+            registerFurniture(curtainGroup, 3.1, 3.55, 0);
+
+            // 6. Modern Gold & Crystal Chandelier (نجفة كريستال مودرن)
+            const chandelierGroup = new THREE.Group();
+            chandelierGroup.position.set(0, 3.95, -0.3);
+
+            const ringOuter = new THREE.Mesh(new THREE.TorusGeometry(0.75, 0.035, 16, 48), goldMat);
+            ringOuter.rotation.x = Math.PI / 2;
+            ringOuter.position.y = -0.55;
+            const ringInner = new THREE.Mesh(new THREE.TorusGeometry(0.45, 0.03, 16, 48), goldMat);
+            ringInner.rotation.x = Math.PI / 2;
+            ringInner.rotation.y = 0.25;
+            ringInner.position.y = -0.82;
+
+            const crystalGlow = new THREE.Mesh(
+                new THREE.TorusGeometry(0.75, 0.045, 12, 48),
+                new THREE.MeshBasicMaterial({ color: 0xfff3c4 })
+            );
+            crystalGlow.rotation.x = Math.PI / 2;
+            crystalGlow.position.y = -0.58;
+
+            chandelierGroup.add(ringOuter, ringInner, crystalGlow);
+            registerFurniture(chandelierGroup, 3.45, 3.95, 3.95);
+
+            // 7. Indoor Architectural Plants & Framed Wall Art (نباتات داخلية ولوحات فنية)
+            const decorGroup = new THREE.Group();
+
+            // Ceramic Plant Pot near TV wall
+            const pot = new THREE.Mesh(
+                new THREE.CylinderGeometry(0.28, 0.22, 0.55, 20),
+                new THREE.MeshStandardMaterial({ color: 0xf1f5f9, roughness: 0.3 })
+            );
+            pot.position.set(-3.2, 0.3, -3.5);
+            decorGroup.add(pot);
+
+            const leafMat = new THREE.MeshStandardMaterial({ color: 0x15803d, roughness: 0.5 });
+            for (let f = 0; f < 7; f++) {
+                const leaf = new THREE.Mesh(new THREE.SphereGeometry(0.26, 12, 12), leafMat);
+                leaf.scale.set(0.5, 1.8, 1.1);
+                const ang = (f * Math.PI * 2) / 7;
+                leaf.position.set(-3.2 + Math.cos(ang) * 0.22, 0.85 + (f % 2) * 0.2, -3.5 + Math.sin(ang) * 0.22);
+                leaf.rotation.z = Math.cos(ang) * 0.4;
+                decorGroup.add(leaf);
+            }
+
+            // Framed Abstract Wall Art on Right Wall
+            const artFrame = new THREE.Mesh(new THREE.BoxGeometry(0.06, 1.45, 1.05), goldMat);
+            artFrame.position.set(4.23, 2.0, 0.2);
+            const artCanvas = new THREE.Mesh(
+                new THREE.BoxGeometry(0.07, 1.35, 0.95),
+                new THREE.MeshStandardMaterial({ color: 0x1e293b, roughness: 0.4 })
+            );
+            artCanvas.position.set(4.22, 2.0, 0.2);
+            decorGroup.add(artFrame, artCanvas);
+
+            registerFurniture(decorGroup, 3.5, 4.0, 0);
+        }
+
+        /********************************************************************
+         * 5. MASTER TRANSFORMATION ENGINE (0.0 TO 4.0 CONTINUOUS SCRUBBING)
+         ********************************************************************/
+        function clamp01(val) {
+            return Math.max(0, Math.min(1, val));
+        }
+
+        function smoothStep(edge0, edge1, x) {
+            const t = clamp01((x - edge0) / (edge1 - edge0));
+            return t * t * (3 - 2 * t);
+        }
+
+        function updateSceneByProgress(p) {
+            // 1. Stage 1 Construction Props (Visible at 0.0, scale out smoothly by 0.95)
+            const propFactor = 1.0 - smoothStep(0.35, 0.95, p);
+            stageGroups.propsBrick.visible = propFactor > 0.01;
+            stageGroups.propsBrick.scale.set(1, Math.max(0.001, propFactor), 1);
+
+            // 2. Stage 2 Cement Plaster & Electrical Conduits (Grow from 0.1 to 1.0)
+            const plasterFactor = smoothStep(0.1, 0.95, p);
+            stageGroups.plasterAndElec.visible = plasterFactor > 0.01;
+            stageGroups.plasterAndElec.scale.set(1, Math.max(0.001, plasterFactor), 1);
+
+            // Hide exposed orange electrical conduits once final paint & cladding go up (Stage 4)
+            const conduits = stageGroups.plasterAndElec.getObjectByName("electricalConduits");
+            if (conduits) {
+                const conduitHide = 1.0 - smoothStep(2.05, 2.55, p);
+                conduits.visible = conduitHide > 0.02;
+            }
+
+            // 3. Stage 3 Gypsum Ceiling & Porcelain Floor (Enter between 1.05 and 2.0)
+            const stage3Factor = smoothStep(1.05, 1.95, p);
+            stageGroups.gypsumAndFloor.visible = stage3Factor > 0.01;
+            stageGroups.gypsumAndFloor.scale.set(stage3Factor, 1, stage3Factor);
+
+            // Turn on ceiling cove LED lights starting in Stage 3
+            const coveIntensity = smoothStep(1.4, 2.0, p) * 0.95;
+            sceneLights.coveLight1.intensity = coveIntensity;
+            sceneLights.coveLight2.intensity = coveIntensity;
+
+            // 4. Stage 4 Paints & Wall Cladding (Enter between 2.05 and 3.0)
+            const stage4Factor = smoothStep(2.05, 2.95, p);
+            stageGroups.claddingAndPaint.visible = stage4Factor > 0.01;
+            stageGroups.claddingAndPaint.scale.set(1, Math.max(0.001, stage4Factor), 1);
+            sceneLights.tvBacklight.intensity = smoothStep(2.4, 3.0, p) * 1.1;
+
+            // 5. Stage 5 Luxury Furnishing (Staggered smooth entry between 3.0 and 4.0)
+            stageGroups.furniture.visible = p > 3.01;
+            animatedFurnitureItems.forEach((item) => {
+                const { startP, endP, baseY } = item.userData;
+                const f = smoothStep(startP, endP, p);
+                item.visible = f > 0.01;
+                const s = Math.max(0.001, f);
+                item.scale.set(s, s, s);
+                item.position.y = baseY + (1 - f) * 0.6;
+            });
+            sceneLights.chandelierLight.intensity = smoothStep(3.5, 4.0, p) * 1.15;
+
+            // Update UI Stage Card & Buttons
+            updateStageUI(p);
+        }
+
+        function updateStageUI(p) {
+            const stageIdx = Math.min(4, Math.max(0, Math.round(p)));
+            const percent = Math.round((p / 4) * 100);
+
+            document.getElementById('completion-percent').textContent = `نسبة الإنجاز: ${percent}%`;
+            const info = STAGES_INFO[stageIdx];
+            document.getElementById('stage-badge').textContent = info.badge;
+            document.getElementById('stage-title').textContent = info.title;
+            document.getElementById('stage-desc').textContent = info.desc;
+
+            const specsContainer = document.getElementById('stage-specs');
+            specsContainer.innerHTML = info.specs.map(s => `
+                <div class="flex items-center gap-2">
+                    <span class="w-2 h-2 rounded-full bg-amber-400 shrink-0"></span>
+                    <span>${s}</span>
+                </div>
+            `).join('');
+
+            for (let i = 0; i < 5; i++) {
+                const btn = document.getElementById(`stage-btn-${i}`);
+                if (i === stageIdx) {
+                    btn.classList.add('active');
+                } else {
+                    btn.classList.remove('active');
+                }
+            }
+        }
+
+        /********************************************************************
+         * 6. TIMELINE, CAMERA VIEWS & AUTO-PLAY TOUR CONTROLS
+         ********************************************************************/
+        function onTimelineScrub(val) {
+            if (isAutoPlaying) stopAutoPlayTour();
+            targetProgress = parseFloat(val);
+        }
+
+        function goToStage(stageIndex) {
+            if (isAutoPlaying) stopAutoPlayTour();
+            targetProgress = stageIndex;
+            document.getElementById('master-timeline').value = stageIndex;
+
+            // Subtle cinematic camera angle shift per stage
+            const stageCams = ['overview', 'tvwall', 'ceiling', 'tvwall', 'overview'];
+            setCameraView(stageCams[stageIndex]);
+        }
+
+        function toggleAutoPlayTour() {
+            if (isAutoPlaying) {
+                stopAutoPlayTour();
+            } else {
+                isAutoPlaying = true;
+                if (targetProgress >= 3.95) {
+                    currentProgress = 0;
+                    targetProgress = 0;
+                }
+                document.getElementById('autoplay-icon').textContent = '⏸';
+                document.getElementById('autoplay-text').textContent = 'إيقاف الجولة التلقائية';
+            }
+        }
+
+        function stopAutoPlayTour() {
+            isAutoPlaying = false;
+            document.getElementById('autoplay-icon').textContent = '▶';
+            document.getElementById('autoplay-text').textContent = 'جولة سينمائية تلقائية';
+        }
+
+        function setCameraView(preset) {
+            switch (preset) {
+                case 'overview':
+                    targetSpherical = { radius: 7.8, theta: 0.35, phi: 1.38 };
+                    targetLookAt.set(0, 1.65, -0.8);
+                    break;
+                case 'tvwall':
+                    targetSpherical = { radius: 5.5, theta: -0.05, phi: 1.48 };
+                    targetLookAt.set(0.3, 1.85, -3.5);
+                    break;
+                case 'sofa':
+                    targetSpherical = { radius: 5.8, theta: 0.75, phi: 1.32 };
+                    targetLookAt.set(-0.3, 1.0, 0.8);
+                    break;
+                case 'ceiling':
+                    targetSpherical = { radius: 6.8, theta: -0.3, phi: 1.72 };
+                    targetLookAt.set(0, 3.2, -1.2);
+                    break;
+            }
+        }
+
+        /********************************************************************
+         * 7. REAL-TIME CUSTOMIZER FUNCTIONS (PAINTS, FLOORS, LIGHTING)
+         ********************************************************************/
+        function toggleCustomizerPanel() {
+            const panel = document.getElementById('customizer-panel');
+            panel.classList.toggle('hidden');
+            panel.classList.toggle('flex');
+        }
+
+        function ensureStageForCustomization(minStage) {
+            if (targetProgress < minStage) {
+                targetProgress = minStage;
+                document.getElementById('master-timeline').value = minStage;
+            }
+        }
+
+        function setWallPaint(hexColor, colorName) {
+            ensureStageForCustomization(3);
+            if (customizableMaterials.wallPaint) {
+                customizableMaterials.wallPaint.color.set(hexColor);
+            }
+            document.getElementById('paint-name-label').textContent = colorName;
+        }
+
+        function setFloorMaterial(type) {
+            ensureStageForCustomization(2);
+            ['marble_white', 'parquet', 'marble_dark'].forEach(id => {
+                const btn = document.getElementById(`floor-${id}`);
+                if (id === type) {
+                    btn.className = "p-2 rounded-xl border border-amber-400 bg-amber-500/20 text-white font-bold text-center transition";
+                } else {
+                    btn.className = "p-2 rounded-xl border border-white/10 bg-white/5 text-slate-300 hover:border-amber-400/50 font-bold text-center transition";
+                }
+            });
+
+            if (customizableMaterials.floorTile && customizableMaterials.marbleTextures[type]) {
+                customizableMaterials.floorTile.map = customizableMaterials.marbleTextures[type];
+                customizableMaterials.floorTile.roughness = type === 'parquet' ? 0.35 : 0.14;
+                customizableMaterials.floorTile.needsUpdate = true;
+            }
+        }
+
+        function setSofaColor(hexColor) {
+            ensureStageForCustomization(4);
+            if (customizableMaterials.sofaFabric) {
+                customizableMaterials.sofaFabric.color.set(hexColor);
+            }
+        }
+
+        function setLightingMode(mode) {
+            ['day', 'cozy', 'sunset'].forEach(m => {
+                const btn = document.getElementById(`light-${m}`);
+                if (m === mode) {
+                    btn.className = "p-2 rounded-xl border border-amber-400 bg-amber-500/20 text-white font-bold flex flex-col items-center gap-1 transition";
+                } else {
+                    btn.className = "p-2 rounded-xl border border-white/10 bg-white/5 text-slate-300 hover:border-amber-400/50 font-bold flex flex-col items-center gap-1 transition";
+                }
+            });
+
+            if (mode === 'day') {
+                sceneLights.ambient.intensity = 0.6;
+                sceneLights.ambient.color.setHex(0xfff6e5);
+                sceneLights.sunLight.intensity = 1.2;
+                sceneLights.sunLight.color.setHex(0xfffbeb);
+                renderer.toneMappingExposure = 1.1;
+            } else if (mode === 'cozy') {
+                sceneLights.ambient.intensity = 0.22;
+                sceneLights.ambient.color.setHex(0x1e293b);
+                sceneLights.sunLight.intensity = 0.15;
+                sceneLights.sunLight.color.setHex(0x38bdf8);
+                renderer.toneMappingExposure = 0.95;
+            } else if (mode === 'sunset') {
+                sceneLights.ambient.intensity = 0.42;
+                sceneLights.ambient.color.setHex(0xfed7aa);
+                sceneLights.sunLight.intensity = 1.1;
+                sceneLights.sunLight.color.setHex(0xf97316);
+                renderer.toneMappingExposure = 1.05;
+            }
+        }
+
+        /********************************************************************
+         * 8. 3D INTERACTIVE HOTSPOTS SYSTEM
+         ********************************************************************/
+        function createHotspotDOMElements() {
+            const container = document.getElementById('hotspots-container');
+            container.innerHTML = '';
+
+            HOTSPOTS_DATA.forEach((hs) => {
+                const el = document.createElement('div');
+                el.id = hs.id;
+                el.className = 'hotspot-marker';
+                el.innerHTML = `<div class="hotspot-pulse" title="${hs.title}">${hs.label}</div>`;
+                el.onclick = (e) => {
+                    e.stopPropagation();
+                    openHotspotPopup(hs);
+                };
+                container.appendChild(el);
+            });
+        }
+
+        function updateHotspotsProjection() {
+            HOTSPOTS_DATA.forEach((hs) => {
+                const el = document.getElementById(hs.id);
+                if (!el) return;
+
+                const inStageRange = currentProgress >= hs.minProgress && currentProgress <= hs.maxProgress;
+                if (!showHotspots || !inStageRange || fullUIHidden) {
+                    el.style.opacity = '0';
+                    el.style.pointerEvents = 'none';
+                    return;
+                }
+
+                const projected = hs.pos.clone().project(camera);
+                if (projected.z > 1) {
+                    el.style.opacity = '0';
+                    el.style.pointerEvents = 'none';
+                    return;
+                }
+
+                const x = (projected.x * 0.5 + 0.5) * window.innerWidth;
+                const y = (-(projected.y * 0.5) + 0.5) * window.innerHeight;
+
+                el.style.left = `${x}px`;
+                el.style.top = `${y}px`;
+                el.style.opacity = '1';
+                el.style.pointerEvents = 'auto';
+            });
+        }
+
+        function openHotspotPopup(hs) {
+            document.getElementById('popup-icon').textContent = hs.label;
+            document.getElementById('popup-stage-tag').textContent = hs.tag;
+            document.getElementById('popup-title').textContent = hs.title;
+            document.getElementById('popup-body').textContent = hs.body;
+            document.getElementById('hotspot-popup').classList.remove('hidden');
+            setCameraView(hs.camTarget);
+        }
+
+        function closeHotspotPopup() {
+            document.getElementById('hotspot-popup').classList.add('hidden');
+        }
+
+        function toggleHotspots() {
+            showHotspots = !showHotspots;
+            if (!showHotspots) closeHotspotPopup();
+        }
+
+        function toggleFullUI() {
+            fullUIHidden = !fullUIHidden;
+            const uiIds = ['top-ui', 'side-info-ui', 'bottom-ui', 'customizer-panel'];
+            uiIds.forEach(id => {
+                const el = document.getElementById(id);
+                if (el) {
+                    if (fullUIHidden) el.classList.add('ui-hidden');
+                    else el.classList.remove('ui-hidden');
+                }
+            });
+            if (fullUIHidden) closeHotspotPopup();
+            document.getElementById('toggle-ui-text').textContent = fullUIHidden ? 'إظهار القوائم' : 'ملء الشاشة 3D';
+        }
+
+        /********************************************************************
+         * 9. COST CALCULATOR & BOOKING FORM LOGIC
+         ********************************************************************/
+        function openCalculatorModal() {
+            const modal = document.getElementById('calculator-modal');
+            modal.classList.remove('hidden');
+            modal.classList.add('flex');
+        }
+
+        function closeCalculatorModal() {
+            const modal = document.getElementById('calculator-modal');
+            modal.classList.add('hidden');
+            modal.classList.remove('flex');
+        }
+
+        function updateCostCalculation() {
+            const area = parseInt(document.getElementById('calc-area').value, 10);
+            document.getElementById('area-display').textContent = `${area} م²`;
+
+            const selectedPkg = document.querySelector('input[name="pkg"]:checked').value;
+            let ratePerMeter = 6800;
+            let days = 90;
+
+            if (selectedPkg === 'super') {
+                ratePerMeter = 4500;
+                days = 75;
+            } else if (selectedPkg === 'ultra') {
+                ratePerMeter = 6800;
+                days = 90;
+            } else if (selectedPkg === 'vip') {
+                ratePerMeter = 11500;
+                days = 110;
+            }
+
+            const total = area * ratePerMeter;
+            document.getElementById('total-cost-output').textContent = `${total.toLocaleString('en-US')} ج.م`;
+            document.getElementById('duration-output').textContent = `⏱️ مدة التنفيذ: ${days} يوم`;
+        }
+
+        function submitInspectionForm(e) {
+            e.preventDefault();
+            document.getElementById('booking-form').classList.add('hidden');
+            document.getElementById('booking-success').classList.remove('hidden');
+        }
+
+        /********************************************************************
+         * 10. ORBIT / TOUCH CAMERA CONTROLS & ANIMATION LOOP
+         ********************************************************************/
+        function setupInteractionListeners(domElement) {
+            let isDragging = false;
+            let prevX = 0;
+            let prevY = 0;
+
+            domElement.addEventListener('mousedown', (e) => {
+                isDragging = true;
+                prevX = e.clientX;
+                prevY = e.clientY;
+            });
+
+            window.addEventListener('mousemove', (e) => {
+                if (!isDragging) return;
+                const dx = e.clientX - prevX;
+                const dy = e.clientY - prevY;
+                prevX = e.clientX;
+                prevY = e.clientY;
+
+                targetSpherical.theta -= dx * 0.0055;
+                targetSpherical.phi = Math.max(0.95, Math.min(1.78, targetSpherical.phi - dy * 0.0045));
+
+                // Clamp camera inside the apartment reception room
+                targetSpherical.theta = Math.max(-0.95, Math.min(1.05, targetSpherical.theta));
+            });
+
+            window.addEventListener('mouseup', () => {
+                isDragging = false;
+            });
+
+            domElement.addEventListener('wheel', (e) => {
+                e.preventDefault();
+                targetSpherical.radius = Math.max(3.8, Math.min(8.6, targetSpherical.radius + e.deltaY * 0.004));
+            }, { passive: false });
+
+            // Touch Support for Mobile & Tablets
+            domElement.addEventListener('touchstart', (e) => {
+                if (e.touches.length === 1) {
+                    isDragging = true;
+                    prevX = e.touches[0].clientX;
+                    prevY = e.touches[0].clientY;
+                }
+            }, { passive: true });
+
+            domElement.addEventListener('touchmove', (e) => {
+                if (!isDragging || e.touches.length !== 1) return;
+                const dx = e.touches[0].clientX - prevX;
+                const dy = e.touches[0].clientY - prevY;
+                prevX = e.touches[0].clientX;
+                prevY = e.touches[0].clientY;
+
+                targetSpherical.theta -= dx * 0.006;
+                targetSpherical.phi = Math.max(0.95, Math.min(1.78, targetSpherical.phi - dy * 0.005));
+                targetSpherical.theta = Math.max(-0.95, Math.min(1.05, targetSpherical.theta));
+            }, { passive: true });
+
+            window.addEventListener('touchend', () => {
+                isDragging = false;
+            });
+
+            window.addEventListener('resize', () => {
+                camera.aspect = window.innerWidth / window.innerHeight;
+                camera.updateProjectionMatrix();
+                renderer.setSize(window.innerWidth, window.innerHeight);
+            });
+        }
+
+        function animateLoop() {
+            requestAnimationFrame(animateLoop);
+
+            // Handle Auto-Play Cinematic Tour
+            if (isAutoPlaying) {
+                targetProgress += 0.0038;
+                targetSpherical.theta = Math.sin(targetProgress * 1.4) * 0.42;
+                if (targetProgress >= 4.0) {
+                    targetProgress = 4.0;
+                    stopAutoPlayTour();
+                }
+                document.getElementById('master-timeline').value = targetProgress;
+            }
+
+            // Smoothly interpolate timeline progress
+            if (Math.abs(targetProgress - currentProgress) > 0.0005) {
+                currentProgress += (targetProgress - currentProgress) * 0.08;
+                updateSceneByProgress(currentProgress);
+            }
+
+            // Pulse green laser level in Stage 1
+            if (laserLinesMesh && stageGroups.propsBrick.visible) {
+                const t = performance.now() * 0.004;
+                laserLinesMesh.children.forEach(line => {
+                    line.material.opacity = 0.65 + Math.sin(t) * 0.25;
+                });
+            }
+
+            // Smooth camera damping
+            camSpherical.radius += (targetSpherical.radius - camSpherical.radius) * 0.08;
+            camSpherical.theta += (targetSpherical.theta - camSpherical.theta) * 0.08;
+            camSpherical.phi += (targetSpherical.phi - camSpherical.phi) * 0.08;
+            camLookAt.lerp(targetLookAt, 0.08);
+
+            // Convert spherical to Cartesian inside the apartment
+            camera.position.x = camLookAt.x + camSpherical.radius * Math.sin(camSpherical.phi) * Math.sin(camSpherical.theta);
+            camera.position.y = camLookAt.y + camSpherical.radius * Math.cos(camSpherical.phi) + 1.85;
+            camera.position.z = camLookAt.z + camSpherical.radius * Math.sin(camSpherical.phi) * Math.cos(camSpherical.theta);
+
+            // Keep camera cleanly inside room bounds
+            camera.position.x = Math.max(-3.8, Math.min(3.8, camera.position.x));
+            camera.position.y = Math.max(0.7, Math.min(3.6, camera.position.y));
+            camera.position.z = Math.max(-2.5, Math.min(4.2, camera.position.z));
+
+            camera.lookAt(camLookAt);
+
+            updateHotspotsProjection();
+            renderer.render(scene, camera);
+        }
+
+        window.onload = function () {
+            init3DScene();
+            animateLoop();
+        };
+    </script>
+</body>
+</html>
